@@ -8,39 +8,54 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import (
     interdiction,
     routes_alerts,
+    routes_auth,
+    routes_cctns,
     routes_changes,
+    routes_citizen_reports,
     routes_convoy,
+    routes_database,
     routes_demo,
     routes_forests,
     routes_permits,
+    routes_permits_bridge,
     routes_police,
     routes_risk,
     routes_satellite,
+    routes_sms,
+    routes_stream,
+    routes_telemetry_gateway,
     routes_vehicles,
     routes_watch,
 )
+from app.database import store
+from app.database.persistence import STORAGE_FILE
 from app.scheduler.watch import start_scheduler, stop_scheduler
 
 app = FastAPI(
     title="PUSHPA Backend",
     description=(
-        "Forest Intelligence & Anti-Smuggling API. Runs entirely on synthetic "
-        "demo data by default — see app/database/store.py and "
-        "app/satellite/sentinel_client.py for where to wire in real "
-        "Copernicus / vehicle-telemetry / permit-registry integrations."
+        "Forest Intelligence & Anti-Smuggling API with Real Satellite Photos, "
+        "Citizen Reporting, Real SMS Alerts, AIS-140/FASTag Telemetry, and CCTNS Police Dispatch."
     ),
-    version="0.2.0",
+    version="0.4.0",
 )
 
-# Wide-open CORS for local hackathon demo use. Restrict this before any
-# real deployment.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(routes_auth.router)
+app.include_router(routes_database.router)
+app.include_router(routes_stream.router)
+app.include_router(routes_citizen_reports.router)
+app.include_router(routes_sms.router)
+app.include_router(routes_telemetry_gateway.router)
+app.include_router(routes_permits_bridge.router)
+app.include_router(routes_cctns.router)
 app.include_router(interdiction.router)
 app.include_router(routes_forests.router)
 app.include_router(routes_satellite.router)
@@ -54,30 +69,34 @@ app.include_router(routes_watch.router)
 app.include_router(routes_police.router)
 app.include_router(routes_convoy.router)
 
-# The daily/periodic satellite watch (app/scheduler/watch.py) runs in the
-# background for the life of the process. Disable with WATCH_ENABLED=0 if
-# you only want on-demand comparisons via the API/UI.
 _watch_enabled = os.getenv("WATCH_ENABLED", "1") == "1"
 
 
 @app.on_event("startup")
 def _on_startup():
+    store.restore_state_from_disk()
     if _watch_enabled:
         start_scheduler()
 
 
 @app.on_event("shutdown")
 def _on_shutdown():
+    store.save_current_state()
     if _watch_enabled:
         stop_scheduler()
 
 
-
 @app.get("/api/health")
 def health():
-    live = os.getenv("USE_LIVE_SATELLITE", "0") == "1"
+    live = os.getenv("USE_LIVE_SATELLITE", "1") == "1"
     return {
         "status": "ok",
         "mode": "LIVE" if live else "DEMO",
         "watch_enabled": _watch_enabled,
+        "storage": {
+            "type": "DISK_PERSISTENT_JSON",
+            "persisted": STORAGE_FILE.exists(),
+            "vehicles_count": len(store.VEHICLES),
+            "alerts_count": len(store.ALERTS),
+        },
     }

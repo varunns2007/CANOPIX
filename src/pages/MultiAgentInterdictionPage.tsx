@@ -1,17 +1,15 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ShieldAlert,
   Bot,
   Cpu,
   Radio,
-  MapPin,
   Clock,
   Send,
   CheckCircle2,
   AlertTriangle,
   Flame,
-  Truck,
   FileText,
   Copy,
   Check,
@@ -20,8 +18,15 @@ import {
   PhoneCall,
   Activity,
   Layers,
+  Gauge,
+  Compass,
+  Scale,
+  Zap,
+  Crosshair,
 } from "lucide-react";
 import { api } from "../api/client";
+import TacticalSatelliteMap from "../components/Map/TacticalSatelliteMap";
+
 
 interface RiskFactor {
   factor: string;
@@ -109,9 +114,8 @@ export default function MultiAgentInterdictionPage() {
       source: "GPS_TELEMETRY",
     };
 
-    // Animate multi-agent progression
-    setTimeout(() => setActiveStep(2), 200);
-    setTimeout(() => setActiveStep(3), 400);
+    setTimeout(() => setActiveStep(2), 150);
+    setTimeout(() => setActiveStep(3), 300);
 
     const res = await api.ingestTelemetry(payload);
     setTimeout(() => {
@@ -121,7 +125,7 @@ export default function MultiAgentInterdictionPage() {
         setResult(res.data);
         loadLogs();
       }
-    }, 600);
+    }, 450);
   };
 
   const setScenario = (type: "smuggler" | "benign" | "convoy") => {
@@ -196,30 +200,30 @@ export default function MultiAgentInterdictionPage() {
   const getRatingColor = (rating: string) => {
     switch (rating) {
       case "CRITICAL":
-        return "text-rose-400 bg-rose-500/10 border-rose-500/30";
+        return "text-rose-400 bg-rose-500/10 border-rose-500/30 glow-rose";
       case "HIGH":
-        return "text-amber-400 bg-amber-500/10 border-amber-500/30";
+        return "text-amber-400 bg-amber-500/10 border-amber-500/30 glow-amber";
       case "MODERATE":
         return "text-yellow-400 bg-yellow-500/10 border-yellow-500/30";
       default:
-        return "text-emerald-400 bg-emerald-500/10 border-emerald-500/30";
+        return "text-emerald-400 bg-emerald-500/10 border-emerald-500/30 glow-emerald";
     }
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-950 p-6 text-slate-100">
-      {/* HEADER SECTION */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-slate-800/80 pb-5">
+    <div className="h-full overflow-y-auto bg-slate-950 p-6 text-slate-100 bg-tech-grid">
+      {/* TOP COMMAND HEADER */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 shadow-lg shadow-emerald-500/20">
-              <Bot className="h-5 w-5 text-slate-950" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-400 shadow-xl shadow-emerald-500/25">
+              <Bot className="h-6 w-6 text-slate-950" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              <h1 className="text-xl font-black tracking-tight text-white flex items-center gap-2.5">
                 Multi-Agent AI Interdiction Engine
-                <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
-                  LangGraph Orchestrator
+                <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-0.5 text-xs font-bold text-emerald-400 glow-emerald">
+                  LangGraph Orchestrator v2.4
                 </span>
               </h1>
               <p className="text-xs text-slate-400">
@@ -230,43 +234,45 @@ export default function MultiAgentInterdictionPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs text-slate-300">
-            <Radio className="h-3.5 w-3.5 animate-pulse text-emerald-400" />
-            <span>4 Agents Active (<span className="text-emerald-400 font-mono">Sentinel, Sleuth, Strategist, Dispatcher</span>)</span>
+          <div className="flex items-center gap-2.5 rounded-xl border border-white/10 glass-panel px-3.5 py-2 text-xs text-slate-200">
+            <Radio className="h-4 w-4 animate-pulse text-emerald-400" />
+            <span>4 Specialized Agents (<span className="text-emerald-400 font-mono font-semibold">Sentinel, Sleuth, Strategist, Dispatcher</span>)</span>
           </div>
         </div>
       </div>
 
       {/* QUICK PRESET SCENARIO BUTTONS */}
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">1-Click Live Scenarios:</span>
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <Zap className="h-3.5 w-3.5 text-amber-400" /> 1-Click Live Scenarios:
+        </span>
         <button
           onClick={() => setScenario("smuggler")}
-          className="flex items-center gap-2 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-500/20 hover:border-rose-400 shadow-sm"
+          className="flex items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3.5 py-2 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/25 hover:border-rose-400 glow-rose"
         >
-          <Flame className="h-3.5 w-3.5 text-rose-400 animate-bounce" />
+          <Flame className="h-4 w-4 text-rose-400 animate-bounce" />
           🚨 Clandestine Night Smuggler (Red Sanders)
         </button>
         <button
           onClick={() => setScenario("convoy")}
-          className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-300 transition hover:bg-amber-500/20 hover:border-amber-400"
+          className="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3.5 py-2 text-xs font-semibold text-amber-300 transition hover:bg-amber-500/25 hover:border-amber-400"
         >
-          <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+          <AlertTriangle className="h-4 w-4 text-amber-400" />
           🚛 Correlated Convoy / Overweight (Rosewood)
         </button>
         <button
           onClick={() => setScenario("benign")}
-          className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20 hover:border-emerald-400"
+          className="flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-2 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/25 hover:border-emerald-400"
         >
-          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
           🚚 Legal Permitted Timber Transit (Highway)
         </button>
       </div>
 
       {/* AGENT SWARM STATE GRAPH PIPELINE VISUALIZER */}
-      <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900/60 p-5 backdrop-blur-sm">
+      <div className="mb-6 rounded-2xl glass-panel p-5 border border-white/10 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
             <Layers className="h-4 w-4 text-emerald-400" />
             Live LangGraph StateGraph Execution Pipeline
           </h2>
@@ -280,17 +286,17 @@ export default function MultiAgentInterdictionPage() {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           {/* NODE 1: SENTINEL */}
           <div
-            className={`relative rounded-lg border p-4 transition ${
+            className={`relative rounded-xl border p-4 transition-all duration-300 ${
               activeStep >= 1
-                ? "border-emerald-500/60 bg-emerald-950/20 shadow-lg shadow-emerald-500/5"
-                : "border-slate-800 bg-slate-900/40"
+                ? "border-emerald-500/80 bg-emerald-950/30 glow-emerald"
+                : "border-white/5 bg-slate-900/40"
             }`}
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                <ShieldAlert className="h-3.5 w-3.5" /> 1. Sentinel Agent
+                <ShieldAlert className="h-4 w-4" /> 1. Sentinel Agent
               </span>
-              <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-mono text-emerald-300">
+              <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-mono text-emerald-300 font-semibold">
                 Registry Tool
               </span>
             </div>
@@ -298,25 +304,25 @@ export default function MultiAgentInterdictionPage() {
               Verifies digital permit validity, species authorization, and 500m highway corridor conformance.
             </p>
             {result && (
-              <div className="mt-3 border-t border-slate-800 pt-2 text-[11px] font-mono text-slate-300">
-                Status: <span className={result.permit_status === "VALID" ? "text-emerald-400" : "text-rose-400 font-bold"}>{result.permit_status || "UNPERMITTED"}</span>
+              <div className="mt-3 border-t border-white/10 pt-2 text-[11px] font-mono text-slate-300">
+                Status: <span className={result.permit_status === "VALID" ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>{result.permit_status || "UNPERMITTED"}</span>
               </div>
             )}
           </div>
 
           {/* NODE 2: SLEUTH */}
           <div
-            className={`relative rounded-lg border p-4 transition ${
+            className={`relative rounded-xl border p-4 transition-all duration-300 ${
               activeStep >= 2
-                ? "border-amber-500/60 bg-amber-950/20 shadow-lg shadow-amber-500/5"
-                : "border-slate-800 bg-slate-900/40"
+                ? "border-amber-500/80 bg-amber-950/30 glow-amber"
+                : "border-white/5 bg-slate-900/40"
             }`}
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5" /> 2. Sleuth Agent
+                <Clock className="h-4 w-4" /> 2. Sleuth Agent
               </span>
-              <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-mono text-amber-300">
+              <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-mono text-amber-300 font-semibold">
                 Pattern Engine
               </span>
             </div>
@@ -324,7 +330,7 @@ export default function MultiAgentInterdictionPage() {
               Detects restricted night curfew transit (22:00–05:00) and correlates multi-vehicle tandem convoys.
             </p>
             {result && (
-              <div className="mt-3 border-t border-slate-800 pt-2 text-[11px] font-mono text-slate-300">
+              <div className="mt-3 border-t border-white/10 pt-2 text-[11px] font-mono text-slate-300">
                 Convoy: <span className={result.convoy_detected ? "text-rose-400 font-bold" : "text-slate-400"}>{result.convoy_detected ? "DETECTED" : "None"}</span>
               </div>
             )}
@@ -332,17 +338,17 @@ export default function MultiAgentInterdictionPage() {
 
           {/* NODE 3: STRATEGIST */}
           <div
-            className={`relative rounded-lg border p-4 transition ${
+            className={`relative rounded-xl border p-4 transition-all duration-300 ${
               activeStep >= 3
-                ? "border-sky-500/60 bg-sky-950/20 shadow-lg shadow-sky-500/5"
-                : "border-slate-800 bg-slate-900/40"
+                ? "border-sky-500/80 bg-sky-950/30 glow-cyan"
+                : "border-white/5 bg-slate-900/40"
             }`}
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
-                <Navigation className="h-3.5 w-3.5" /> 3. Strategist Agent
+                <Navigation className="h-4 w-4" /> 3. Strategist Agent
               </span>
-              <span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-mono text-sky-300">
+              <span className="rounded bg-sky-500/20 px-2 py-0.5 text-[10px] font-mono text-sky-300 font-semibold">
                 Dijkstra Solver
               </span>
             </div>
@@ -350,25 +356,25 @@ export default function MultiAgentInterdictionPage() {
               Evaluates road network escape routes and selects optimal roadblock where <span className="font-mono text-sky-300">T_police &lt; T_exit</span>.
             </p>
             {result && (
-              <div className="mt-3 border-t border-slate-800 pt-2 text-[11px] font-mono text-slate-300 truncate">
-                Chokepoint: <span className="text-sky-300">{result.target_chokepoint?.name || "Bypassed (Low Risk)"}</span>
+              <div className="mt-3 border-t border-white/10 pt-2 text-[11px] font-mono text-slate-300 truncate">
+                Chokepoint: <span className="text-sky-300 font-bold">{result.target_chokepoint?.name || "Bypassed (Low Risk)"}</span>
               </div>
             )}
           </div>
 
           {/* NODE 4: DISPATCHER */}
           <div
-            className={`relative rounded-lg border p-4 transition ${
+            className={`relative rounded-xl border p-4 transition-all duration-300 ${
               activeStep >= 4
-                ? "border-rose-500/60 bg-rose-950/20 shadow-lg shadow-rose-500/5"
-                : "border-slate-800 bg-slate-900/40"
+                ? "border-rose-500/80 bg-rose-950/30 glow-rose"
+                : "border-white/5 bg-slate-900/40"
             }`}
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
-                <Send className="h-3.5 w-3.5" /> 4. Dispatcher Agent
+                <Send className="h-4 w-4" /> 4. Dispatcher Agent
               </span>
-              <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-mono text-rose-300">
+              <span className="rounded bg-rose-500/20 px-2 py-0.5 text-[10px] font-mono text-rose-300 font-semibold">
                 Police Disseminator
               </span>
             </div>
@@ -376,7 +382,7 @@ export default function MultiAgentInterdictionPage() {
               Renders Jinja2 tactical dossier, broadcasts to live SSE stream, and logs emergency alert.
             </p>
             {result && (
-              <div className="mt-3 border-t border-slate-800 pt-2 text-[11px] font-mono text-slate-300">
+              <div className="mt-3 border-t border-white/10 pt-2 text-[11px] font-mono text-slate-300">
                 Dispatch: <span className={result.dispatch_status === "SENT" ? "text-rose-400 font-bold" : "text-slate-400"}>{result.dispatch_status}</span>
               </div>
             )}
@@ -386,10 +392,10 @@ export default function MultiAgentInterdictionPage() {
 
       {/* MAIN TWO-COLUMN WORKBENCH */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* LEFT COLUMN: TELEMETRY INGESTION FORM (5 COLS) */}
+        {/* LEFT COLUMN: TELEMETRY INGESTION FORM & GAUGES (5 COLS) */}
         <div className="space-y-6 lg:col-span-5">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+          <div className="rounded-2xl glass-panel p-5 shadow-2xl border border-white/10">
+            <h2 className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
               <Cpu className="h-4 w-4 text-emerald-400" />
               Real-Time Telemetry & FASTag Ingestion Form
             </h2>
@@ -401,7 +407,7 @@ export default function MultiAgentInterdictionPage() {
                   type="text"
                   value={vehicleId}
                   onChange={(e) => setVehicleId(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3.5 py-2.5 text-xs font-mono text-slate-100 focus:border-emerald-500 focus:outline-none shadow-inner"
                   placeholder="e.g. TN43E9912"
                 />
               </div>
@@ -413,7 +419,7 @@ export default function MultiAgentInterdictionPage() {
                     type="text"
                     value={lat}
                     onChange={(e) => setLat(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
+                    className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3.5 py-2.5 text-xs font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -422,51 +428,61 @@ export default function MultiAgentInterdictionPage() {
                     type="text"
                     value={lng}
                     onChange={(e) => setLng(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
+                    className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3.5 py-2.5 text-xs font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-400">Speed (km/h)</label>
+              {/* REAL-TIME TELEMETRY GAUGES PREVIEW */}
+              <div className="grid grid-cols-3 gap-2.5 rounded-xl border border-white/5 bg-slate-950/50 p-3">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400 mb-1">
+                    <Gauge className="h-3 w-3 text-emerald-400" /> Speed
+                  </div>
                   <input
                     type="number"
                     value={speed}
                     onChange={(e) => setSpeed(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
+                    className="w-full text-center font-mono text-xs font-bold text-emerald-400 bg-transparent focus:outline-none"
                   />
+                  <div className="text-[9px] text-slate-500">km/h</div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-400">Heading (&deg;)</label>
+
+                <div className="text-center border-x border-white/10">
+                  <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400 mb-1">
+                    <Compass className="h-3 w-3 text-sky-400" /> Heading
+                  </div>
                   <input
                     type="number"
                     value={heading}
                     onChange={(e) => setHeading(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
+                    className="w-full text-center font-mono text-xs font-bold text-sky-400 bg-transparent focus:outline-none"
                   />
+                  <div className="text-[9px] text-slate-500">&deg; DEG</div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-400">Cargo Weight (kg)</label>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400 mb-1">
+                    <Scale className="h-3 w-3 text-amber-400" /> Weight
+                  </div>
                   <input
                     type="number"
                     value={cargoWeight}
                     onChange={(e) => setCargoWeight(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
+                    className="w-full text-center font-mono text-xs font-bold text-amber-400 bg-transparent focus:outline-none"
                   />
+                  <div className="text-[9px] text-slate-500">kg</div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-400">Declared Species</label>
-                  <input
-                    type="text"
-                    value={declaredSpecies}
-                    onChange={(e) => setDeclaredSpecies(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-400">Declared Species</label>
+                <input
+                  type="text"
+                  value={declaredSpecies}
+                  onChange={(e) => setDeclaredSpecies(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3.5 py-2.5 text-xs font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
+                />
               </div>
 
               <div>
@@ -475,14 +491,14 @@ export default function MultiAgentInterdictionPage() {
                   type="text"
                   value={timestamp}
                   onChange={(e) => setTimestamp(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3.5 py-2.5 text-xs font-mono text-slate-100 focus:border-emerald-500 focus:outline-none"
                 />
               </div>
 
               <button
                 onClick={() => runPipeline()}
                 disabled={loading}
-                className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-500 disabled:opacity-50 shadow-md shadow-emerald-600/20"
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 px-4 py-3 text-xs font-bold text-white transition hover:from-emerald-500 hover:to-teal-400 disabled:opacity-50 shadow-lg shadow-emerald-500/20"
               >
                 {loading ? (
                   <>
@@ -499,15 +515,25 @@ export default function MultiAgentInterdictionPage() {
             </div>
           </div>
 
-          {/* EXPLAINABILITY CALLOUT BOX */}
-          <div className="rounded-xl border border-teal-900/40 bg-teal-950/10 p-4 text-xs text-slate-300">
-            <div className="flex items-center gap-2 font-bold text-teal-400 mb-1.5">
-              <Bot className="h-4 w-4" />
-              Why LangGraph Deterministic Multi-Agent Architecture?
+          {/* TACTICAL ROUTE ROADBLOCK REAL SATELLITE MAP */}
+          <div className="rounded-2xl glass-panel p-5 border border-white/10 shadow-2xl">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                <Crosshair className="h-4 w-4 text-rose-400" />
+                Tactical Satellite Intercept & Roadblock HUD
+              </div>
+              <span className="text-[10px] font-mono text-emerald-400 font-bold">Sentinel-2 10m L2A</span>
             </div>
-            <p className="text-[11.5px] leading-relaxed text-slate-400">
-              In real-world anti-smuggling and law enforcement operations, black-box statistical models lack transparent legal admissibility. PUSHPA uses deterministic LangGraph tool-calling nodes with mathematical road routing (Dijkstra) and verifiable permit cross-referencing, ensuring every alert produces court-admissible audit trails in &lt; 50ms.
-            </p>
+            <TacticalSatelliteMap
+              vehicleId={vehicleId}
+              lat={parseFloat(lat) || 11.4085}
+              lng={parseFloat(lng) || 76.6965}
+              speed={parseFloat(speed) || 38}
+              heading={parseFloat(heading) || 212}
+              chokepoint={result?.target_chokepoint}
+              policeStation={result?.assigned_police_station}
+              riskScore={result?.risk_score ?? 85}
+            />
           </div>
         </div>
 
@@ -515,16 +541,17 @@ export default function MultiAgentInterdictionPage() {
         <div className="space-y-6 lg:col-span-7">
           {result ? (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
               className="space-y-5"
             >
               {/* SUMMARY STATS & RISK SCORE */}
-              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <div className="rounded-2xl glass-panel p-5 shadow-2xl border border-white/10">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
                   <div>
                     <div className="text-xs font-medium text-slate-400">Vehicle Target</div>
-                    <div className="text-lg font-extrabold text-white font-mono">{result.vehicle_id}</div>
+                    <div className="text-xl font-black text-white font-mono">{result.vehicle_id}</div>
                   </div>
 
                   <div className="flex items-center gap-4">
@@ -532,7 +559,7 @@ export default function MultiAgentInterdictionPage() {
                       <div className="text-xs font-medium text-slate-400">Risk Score</div>
                       <div className="text-2xl font-black text-white font-mono">{result.risk_score}<span className="text-xs text-slate-400">/100</span></div>
                     </div>
-                    <div className={`rounded-xl border px-3 py-2 text-xs font-black uppercase tracking-wider ${getRatingColor(result.rating)}`}>
+                    <div className={`rounded-xl border px-3.5 py-2 text-xs font-black uppercase tracking-wider ${getRatingColor(result.rating)}`}>
                       {result.rating}
                     </div>
                   </div>
@@ -540,7 +567,7 @@ export default function MultiAgentInterdictionPage() {
 
                 {/* XAI RISK FACTORS */}
                 <div className="mt-4">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <div className="mb-2.5 text-xs font-bold uppercase tracking-wider text-slate-300">
                     Explainable AI (XAI) Contributing Factors:
                   </div>
                   {result.risk_factors.length === 0 ? (
@@ -548,10 +575,10 @@ export default function MultiAgentInterdictionPage() {
                   ) : (
                     <div className="space-y-2">
                       {result.risk_factors.map((factor, idx) => (
-                        <div key={idx} className="flex items-start justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950/60 p-2.5 text-xs">
+                        <div key={idx} className="flex items-start justify-between gap-3 rounded-xl border border-white/5 bg-slate-950/70 p-3 text-xs glass-card">
                           <div>
                             <span className="font-bold text-rose-400 font-mono">+{factor.points} pts</span> &mdash;{" "}
-                            <span className="font-semibold text-slate-200">{factor.factor}</span>
+                            <span className="font-bold text-slate-100">{factor.factor}</span>
                             <p className="mt-0.5 text-[11px] text-slate-400">{factor.explanation}</p>
                           </div>
                         </div>
@@ -563,9 +590,9 @@ export default function MultiAgentInterdictionPage() {
 
               {/* TARGET CHOKEPOINT & POLICE INTERCEPT CARD */}
               {result.target_chokepoint && (
-                <div className="rounded-xl border border-rose-500/30 bg-rose-950/10 p-5 shadow-xl">
+                <div className="rounded-2xl glass-panel p-5 shadow-2xl border border-rose-500/40 glow-rose">
                   <div className="mb-3 flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-rose-400 flex items-center gap-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-rose-400 flex items-center gap-2">
                       <Navigation className="h-4 w-4" />
                       Strategist Interception Route & Roadblock Chokepoint
                     </h3>
@@ -575,7 +602,7 @@ export default function MultiAgentInterdictionPage() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
+                    <div className="rounded-xl border border-white/10 bg-slate-950/80 p-3.5">
                       <div className="text-[10px] uppercase tracking-wider text-slate-400">Chokepoint Bottleneck</div>
                       <div className="text-xs font-bold text-white mt-0.5">{result.target_chokepoint.name}</div>
                       <div className="text-[11px] text-slate-400">{result.target_chokepoint.road_name}</div>
@@ -584,7 +611,7 @@ export default function MultiAgentInterdictionPage() {
                       </div>
                     </div>
 
-                    <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
+                    <div className="rounded-xl border border-white/10 bg-slate-950/80 p-3.5">
                       <div className="text-[10px] uppercase tracking-wider text-slate-400">Time-to-Intercept Headroom</div>
                       <div className="mt-1 flex items-baseline justify-between">
                         <span className="text-xs text-slate-400">Smuggler ETA:</span>
@@ -594,7 +621,7 @@ export default function MultiAgentInterdictionPage() {
                         <span className="text-xs text-slate-400">Police ETA:</span>
                         <span className="text-xs font-bold font-mono text-sky-400">{result.target_chokepoint.police_eta_mins} mins</span>
                       </div>
-                      <div className="mt-1 border-t border-slate-800 pt-1 flex items-baseline justify-between text-emerald-400 font-bold text-xs">
+                      <div className="mt-1.5 border-t border-white/10 pt-1 flex items-baseline justify-between text-emerald-400 font-bold text-xs">
                         <span>Tactical Safety Margin:</span>
                         <span>+{result.target_chokepoint.safety_margin_mins} mins</span>
                       </div>
@@ -602,7 +629,7 @@ export default function MultiAgentInterdictionPage() {
                   </div>
 
                   {result.assigned_police_station && (
-                    <div className="mt-3 flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950 p-3 text-xs">
+                    <div className="mt-3.5 flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/80 p-3 text-xs">
                       <div>
                         <span className="text-slate-400">Assigned Unit: </span>
                         <strong className="text-white">{result.assigned_police_station.station_name}</strong>
@@ -619,48 +646,48 @@ export default function MultiAgentInterdictionPage() {
 
               {/* TACTICAL EMERGENCY DOSSIER */}
               {result.dispatch_payload && (
-                <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl">
-                  <div className="mb-2 flex items-center justify-between">
+                <div className="rounded-2xl glass-panel p-5 shadow-2xl border border-white/10">
+                  <div className="mb-2.5 flex items-center justify-between">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
                       <FileText className="h-4 w-4 text-rose-400" />
                       Tactical Police Emergency Dossier
                     </h3>
                     <button
                       onClick={handleCopyDossier}
-                      className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-2.5 py-1 text-xs text-slate-300 transition hover:bg-slate-700"
+                      className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-800/80 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-700"
                     >
                       {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                       {copied ? "Copied!" : "Copy Dossier"}
                     </button>
                   </div>
-                  <pre className="max-h-56 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950 p-3 font-mono text-[11px] leading-relaxed text-slate-300">
+                  <pre className="max-h-56 overflow-y-auto rounded-xl border border-white/10 bg-slate-950/90 p-3.5 font-mono text-[11px] leading-relaxed text-slate-300 shadow-inner">
                     {result.dispatch_payload}
                   </pre>
                 </div>
               )}
             </motion.div>
           ) : (
-            <div className="flex h-72 flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-900/40 p-8 text-center">
-              <Bot className="h-10 w-10 text-slate-600 mb-3" />
-              <h3 className="text-sm font-semibold text-slate-300">Ready to Ingest Telemetry</h3>
-              <p className="max-w-md text-xs text-slate-500 mt-1">
+            <div className="flex h-72 flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 glass-panel p-8 text-center">
+              <Bot className="h-12 w-12 text-slate-500 mb-3 animate-float-smooth" />
+              <h3 className="text-sm font-bold text-slate-200">Ready to Ingest Telemetry</h3>
+              <p className="max-w-md text-xs text-slate-400 mt-1">
                 Select a 1-click scenario above or enter custom coordinates and click <strong>"Ingest Telemetry"</strong> to watch the 4 LangGraph agents execute in real-time.
               </p>
             </div>
           )}
 
           {/* HISTORICAL POLICE DISPATCH LOGS */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl">
-            <div className="mb-3 flex items-center justify-between">
+          <div className="rounded-2xl glass-panel p-5 shadow-2xl border border-white/10">
+            <div className="mb-3.5 flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
                 <Activity className="h-4 w-4 text-emerald-400" />
                 Live Police Station Emergency Dispatch Log ({dispatchLogs.length})
               </h3>
               <button
                 onClick={loadLogs}
-                className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold"
               >
-                <RefreshCw className="h-3 w-3" /> Refresh
+                <RefreshCw className="h-3.5 w-3.5" /> Refresh
               </button>
             </div>
 
@@ -669,26 +696,26 @@ export default function MultiAgentInterdictionPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="border-b border-slate-800 text-[10px] uppercase text-slate-400">
+                  <thead className="border-b border-white/10 text-[10px] uppercase text-slate-400">
                     <tr>
-                      <th className="pb-2">Dispatch ID</th>
-                      <th className="pb-2">Vehicle ID</th>
-                      <th className="pb-2">Risk</th>
-                      <th className="pb-2">Chokepoint Intercept</th>
-                      <th className="pb-2">Police Station</th>
-                      <th className="pb-2">Status</th>
+                      <th className="pb-2.5">Dispatch ID</th>
+                      <th className="pb-2.5">Vehicle ID</th>
+                      <th className="pb-2.5">Risk</th>
+                      <th className="pb-2.5">Chokepoint Intercept</th>
+                      <th className="pb-2.5">Police Station</th>
+                      <th className="pb-2.5">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
+                  <tbody className="divide-y divide-white/5 font-mono text-[11px]">
                     {dispatchLogs.slice(0, 5).map((log, i) => (
-                      <tr key={i} className="hover:bg-slate-800/30">
-                        <td className="py-2 text-emerald-400">{log.dispatch_id}</td>
-                        <td className="py-2 font-bold text-white">{log.vehicle_id}</td>
-                        <td className="py-2 text-rose-400 font-bold">{log.risk_score}/100</td>
-                        <td className="py-2 text-slate-300 truncate max-w-[140px]">{log.target_chokepoint?.name || "—"}</td>
-                        <td className="py-2 text-slate-300 truncate max-w-[140px]">{log.assigned_police_station?.station_name || "—"}</td>
-                        <td className="py-2">
-                          <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[9px] font-bold text-rose-300">
+                      <tr key={i} className="hover:bg-white/5 transition-colors">
+                        <td className="py-2.5 text-emerald-400">{log.dispatch_id}</td>
+                        <td className="py-2.5 font-bold text-white">{log.vehicle_id}</td>
+                        <td className="py-2.5 text-rose-400 font-bold">{log.risk_score}/100</td>
+                        <td className="py-2.5 text-slate-300 truncate max-w-[140px]">{log.target_chokepoint?.name || "—"}</td>
+                        <td className="py-2.5 text-slate-300 truncate max-w-[140px]">{log.assigned_police_station?.station_name || "—"}</td>
+                        <td className="py-2.5">
+                          <span className="rounded-md bg-rose-500/20 px-2 py-0.5 text-[9px] font-bold text-rose-300">
                             {log.status}
                           </span>
                         </td>

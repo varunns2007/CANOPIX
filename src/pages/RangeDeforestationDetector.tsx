@@ -819,12 +819,19 @@ function InteractiveRangeMap({
           <img
             key={`${zoom}-${t.x}-${t.y}-${i}`}
             src={`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${t.y}/${t.x}`}
-            alt="Satellite map"
+            alt="Real Optical Satellite Imagery"
             draggable={false}
             className="absolute h-[256px] w-[256px] max-w-none object-cover"
             style={{ left: t.left, top: t.top }}
           />
         ))}
+
+        {/* Photorealistic Atmospheric Vignette & Radial Lighting */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#020b06]/20 via-transparent to-[#020b06]/35" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_50%,rgba(2,11,6,0.45)_100%)]" />
+
+        {/* Tactical Scanlines */}
+        <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(0,0,0,0.10)_3px)] opacity-60" />
       </div>
 
       {/* SVG Vector Overlays */}
@@ -837,7 +844,19 @@ function InteractiveRangeMap({
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+          <pattern id="range-grid" width="60" height="60" patternUnits="userSpaceOnUse">
+            <path d="M60 0H0V60" fill="none" stroke="#6ee7b7" strokeOpacity=".05" />
+          </pattern>
         </defs>
+
+        <rect width={size.width} height={size.height} fill="url(#range-grid)" />
+
+        {/* Coordinate Center Reticle */}
+        <g transform={`translate(${size.width / 2},${size.height / 2})`} opacity=".45">
+          <circle r="24" fill="none" stroke="#5eead4" strokeWidth="1" strokeDasharray="4 4" />
+          <line x1="-32" y1="0" x2="32" y2="0" stroke="#5eead4" strokeWidth="1" />
+          <line x1="0" y1="-32" x2="0" y2="32" stroke="#5eead4" strokeWidth="1" />
+        </g>
 
         {/* Forest Range Boundary */}
         {selectedRange.boundary && (
@@ -946,8 +965,26 @@ function InteractiveRangeMap({
         </button>
       </div>
 
-      <div className="pointer-events-none absolute bottom-2 left-4 font-mono text-[8px] text-white/70">
-        ESRI WORLD IMAGERY · COPERNICUS SENTINEL-2 SPECTRAL OVERLAY · LEVEL {zoom}
+      {/* Top Left Satellite Status Header */}
+      <div
+        data-no-pan
+        onPointerDown={(e) => e.stopPropagation()}
+        className="pointer-events-none absolute left-4 top-4 z-10 flex flex-col gap-0.5 rounded-lg border border-emerald-500/40 bg-[#041009]/90 px-3 py-2 backdrop-blur-md shadow-xl"
+      >
+        <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-slate-100">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          {selectedRange.name.toUpperCase()}
+        </div>
+        <div className="font-mono text-[9px] text-emerald-400">
+          COPERNICUS SENTINEL-2 MSI · 10M GSD · [{center.lat.toFixed(4)}°N, {center.lng.toFixed(4)}°E]
+        </div>
+        <div className="font-mono text-[9px] text-slate-400">
+          SUN ELEV: 58.2° · AZ: 124.6° · LEVEL Z{zoom} · {viewMode.toUpperCase()}
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute bottom-2 left-4 font-mono text-[9px] text-emerald-400/80 bg-black/60 px-2 py-0.5 rounded border border-white/5 backdrop-blur-sm">
+        ESRI WORLD IMAGERY · COPERNICUS SENTINEL-2 MULTISPECTRAL · ZOOM {zoom}
       </div>
     </div>
   );

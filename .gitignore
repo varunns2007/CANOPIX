@@ -37,3 +37,5 @@ venv/
 .venv/
 env/
 .env
+pushpa_store.json
+

@@ -1,15 +1,18 @@
 """
-In-memory data store for PUSHPA.
+Data store for PUSHPA with persistence bridge.
 
 Configured with authentic Western Ghats / Anamalai Tiger Reserve geospatial zones,
 real Indian RTO commercial vehicle registrations, genuine Form II/IV timber transit
-permits, and recorded historical illegal logging incident logs.
+permits, and recorded historical illegal logging incident logs. Automatically saves
+and restores state via app/database/persistence.py.
 """
 from __future__ import annotations
 
 import itertools
 from datetime import datetime, timedelta
 from typing import Any
+
+from app.database.persistence import persistence
 
 _id_counter = itertools.count(1)
 
@@ -19,9 +22,9 @@ def next_id(prefix: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Forest zones (Western Ghats & Tiger Reserve Divisions)
+# Default Seed Data
 # ---------------------------------------------------------------------------
-FOREST_ZONES: list[dict[str, Any]] = [
+DEFAULT_FOREST_ZONES: list[dict[str, Any]] = [
     {
         "id": "ZONE-A",
         "name": "Nilgiri Biosphere Reserve — Zone A",
@@ -42,10 +45,7 @@ FOREST_ZONES: list[dict[str, Any]] = [
     },
 ]
 
-# ---------------------------------------------------------------------------
-# Historical illegal-felling incidents (used for the +10 hotspot risk factor)
-# ---------------------------------------------------------------------------
-HISTORICAL_INCIDENTS: list[dict[str, Any]] = [
+DEFAULT_HISTORICAL_INCIDENTS: list[dict[str, Any]] = [
     {"id": "INC-2026-088", "zone_id": "ZONE-B", "lat": 10.3410, "lng": 77.0620, "date": "2026-06-04", "species": "Red Sanders", "seizure_kg": 4200},
     {"id": "INC-2026-074", "zone_id": "ZONE-B", "lat": 10.3312, "lng": 77.0312, "date": "2026-05-28", "species": "Rosewood", "seizure_kg": 2800},
     {"id": "INC-2026-061", "zone_id": "ZONE-B", "lat": 10.3722, "lng": 77.0415, "date": "2026-05-12", "species": "Teak", "seizure_kg": 5100},
@@ -57,10 +57,7 @@ HISTORICAL_INCIDENTS: list[dict[str, Any]] = [
     {"id": "INC-2025-031", "zone_id": "ZONE-C", "lat": 9.6110, "lng": 77.1590, "date": "2025-02-19", "species": "Sandalwood", "seizure_kg": 1400},
 ]
 
-# ---------------------------------------------------------------------------
-# Timber transit permit registry (Form II / Form IV permits)
-# ---------------------------------------------------------------------------
-TIMBER_PERMITS: dict[str, dict[str, Any]] = {
+DEFAULT_TIMBER_PERMITS: dict[str, dict[str, Any]] = {
     "TN 38 BX 9104": {
         "permit_id": None,
         "holder": None,
@@ -129,10 +126,7 @@ TIMBER_PERMITS: dict[str, dict[str, Any]] = {
     },
 }
 
-# ---------------------------------------------------------------------------
-# Live vehicle telemetry
-# ---------------------------------------------------------------------------
-VEHICLES: dict[str, dict[str, Any]] = {
+DEFAULT_VEHICLES: dict[str, dict[str, Any]] = {
     "TN 38 BX 9104": {
         "vehicle_id": "TN 38 BX 9104",
         "registration_number": "TN 38 BX 9104",
@@ -205,8 +199,55 @@ VEHICLES: dict[str, dict[str, Any]] = {
     },
 }
 
+# ---------------------------------------------------------------------------
+# Active in-memory state
+# ---------------------------------------------------------------------------
+FOREST_ZONES: list[dict[str, Any]] = [dict(z) for z in DEFAULT_FOREST_ZONES]
+HISTORICAL_INCIDENTS: list[dict[str, Any]] = [dict(i) for i in DEFAULT_HISTORICAL_INCIDENTS]
+TIMBER_PERMITS: dict[str, dict[str, Any]] = {k: dict(v) for k, v in DEFAULT_TIMBER_PERMITS.items()}
+VEHICLES: dict[str, dict[str, Any]] = {k: dict(v) for k, v in DEFAULT_VEHICLES.items()}
 VEHICLE_POSITION_LOG: dict[str, list[dict[str, Any]]] = {}
+CHANGE_POLYGONS: dict[str, dict[str, Any]] = {}
+ALERTS: list[dict[str, Any]] = []
+WATCH_HISTORY: dict[str, list[dict[str, Any]]] = {}
+WATCH_LAST_RUN_AT: str | None = None
 POSITION_LOG_MAX_PER_VEHICLE = 200
+
+
+def save_current_state() -> None:
+    """Commit active in-memory state to persistent disk storage."""
+    payload = {
+        "forest_zones": FOREST_ZONES,
+        "historical_incidents": HISTORICAL_INCIDENTS,
+        "timber_permits": TIMBER_PERMITS,
+        "vehicles": VEHICLES,
+        "vehicle_position_log": VEHICLE_POSITION_LOG,
+        "change_polygons": CHANGE_POLYGONS,
+        "alerts": ALERTS,
+        "watch_history": WATCH_HISTORY,
+        "watch_last_run_at": WATCH_LAST_RUN_AT,
+    }
+    persistence.save_state(payload)
+
+
+def restore_state_from_disk() -> bool:
+    """Restore state from disk if present; otherwise seed defaults and persist."""
+    global FOREST_ZONES, HISTORICAL_INCIDENTS, TIMBER_PERMITS, VEHICLES
+    global VEHICLE_POSITION_LOG, CHANGE_POLYGONS, ALERTS, WATCH_HISTORY, WATCH_LAST_RUN_AT
+
+    loaded = persistence.load_state()
+    if loaded:
+        FOREST_ZONES = loaded.get("forest_zones", [dict(z) for z in DEFAULT_FOREST_ZONES])
+        HISTORICAL_INCIDENTS = loaded.get("historical_incidents", [dict(i) for i in DEFAULT_HISTORICAL_INCIDENTS])
+        TIMBER_PERMITS = loaded.get("timber_permits", {k: dict(v) for k, v in DEFAULT_TIMBER_PERMITS.items()})
+        VEHICLES = loaded.get("vehicles", {k: dict(v) for k, v in DEFAULT_VEHICLES.items()})
+        VEHICLE_POSITION_LOG = loaded.get("vehicle_position_log", {})
+        CHANGE_POLYGONS = loaded.get("change_polygons", {})
+        ALERTS = loaded.get("alerts", [])
+        WATCH_HISTORY = loaded.get("watch_history", {})
+        WATCH_LAST_RUN_AT = loaded.get("watch_last_run_at")
+        return True
+    return False
 
 
 def log_vehicle_position(vehicle_id: str, lat: float, lng: float, timestamp: str | None = None) -> None:
@@ -214,18 +255,14 @@ def log_vehicle_position(vehicle_id: str, lat: float, lng: float, timestamp: str
     log = VEHICLE_POSITION_LOG.setdefault(vehicle_id, [])
     log.insert(0, entry)
     del log[POSITION_LOG_MAX_PER_VEHICLE:]
-
-
-CHANGE_POLYGONS: dict[str, dict[str, Any]] = {}
-ALERTS: list[dict[str, Any]] = []
-WATCH_HISTORY: dict[str, list[dict[str, Any]]] = {}
-WATCH_LAST_RUN_AT: str | None = None
+    save_current_state()
 
 
 def record_watch_result(zone_id: str, result: dict[str, Any]) -> None:
     history = WATCH_HISTORY.setdefault(zone_id, [])
     history.insert(0, result)
     del history[100:]
+    save_current_state()
 
 
 def seed_default_change_polygon() -> None:
@@ -247,18 +284,17 @@ def seed_default_change_polygon() -> None:
     }
 
 
-seed_default_change_polygon()
-
-
 def seed_demo_position_log() -> None:
     if VEHICLE_POSITION_LOG:
         return
     now = datetime.utcnow()
-    # TN 38 BX 9104 (unpermitted heavy tipper) — sightings near CHG_POLY_001
     log_vehicle_position("TN 38 BX 9104", 10.3395, 77.0590, (now - timedelta(minutes=95)).isoformat())
     log_vehicle_position("TN 38 BX 9104", 10.3360, 77.0360, (now - timedelta(minutes=25)).isoformat())
-    # KL 06 E 4912 (route mismatch) also near the interior buffer
     log_vehicle_position("KL 06 E 4912", 10.3320, 77.0450, (now - timedelta(minutes=40)).isoformat())
 
 
-seed_demo_position_log()
+# Initialize state on module load
+if not restore_state_from_disk():
+    seed_default_change_polygon()
+    seed_demo_position_log()
+    save_current_state()

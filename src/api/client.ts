@@ -1,20 +1,28 @@
-// Thin REST client for the PUSHPA FastAPI backend (see /backend).
+// REST client for the PUSHPA FastAPI backend (see /backend).
 //
-// The frontend must keep working with zero setup, so every call here is
-// wrapped to fail soft: if the backend isn't running (the default state),
-// callers get { ok: false } instead of a thrown error, and pages fall back
-// to the bundled demo data in src/data/mockData.ts.
+// Supports live JWT Auth tokens, Role-Based Access Control, Persistent DB status,
+// Telemetry streaming, Citizen Reporting, Real SMS Alerts, AIS-140 GPS Gateway,
+// NTTS Permit Verification, and CCTNS Police Dispatches.
 
 const BASE_URL = (import.meta as any).env?.VITE_BACKEND_URL || "http://localhost:8000";
-const TIMEOUT_MS = 4000;
+const TIMEOUT_MS = 5000;
 
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string };
+
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem("pushpa_auth_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(`${BASE_URL}${path}`, { ...init, signal: controller.signal });
+    const headers = {
+      ...getAuthHeaders(),
+      ...(init?.headers || {}),
+    };
+    const res = await fetch(`${BASE_URL}${path}`, { ...init, headers, signal: controller.signal });
     if (!res.ok) {
       return { ok: false, error: `HTTP ${res.status}` };
     }
@@ -35,8 +43,115 @@ function post<T>(path: string, body?: unknown) {
   });
 }
 
+// --- Auth & RBAC ----------------------------------------------------------
+export async function getProfileApi() {
+  return request<{ user: any }>("/api/auth/me");
+}
+
+export async function switchRoleApi(roleId: string) {
+  return post<{ access_token: string; token_type: string; user: any }>("/api/auth/switch-role", { role_id: roleId });
+}
+
+// --- Database & Persistence ------------------------------------------------
+export async function getDatabaseStatus() {
+  return request<any>("/api/database/status");
+}
+
+export async function resetDatabaseApi() {
+  return post<any>("/api/database/reset");
+}
+
+// --- Public Citizen Reporting ----------------------------------------------
+export async function submitCitizenReport(payload: {
+  category: string;
+  title: string;
+  description: string;
+  lat: number;
+  lng: number;
+  photo_base64?: string;
+  reporter_phone?: string;
+  is_anonymous: boolean;
+}) {
+  return post<any>("/api/reports/citizen", payload);
+}
+
+export async function listCitizenReports() {
+  return request<{ count: number; reports: any[] }>("/api/reports/citizen");
+}
+
+// --- Real SMS Alert Dispatcher ---------------------------------------------
+export async function sendSmsAlert(phoneNumber: string, message: string, priority = "CRITICAL") {
+  return post<any>("/api/sms/send", { phone_number: phoneNumber, message, priority });
+}
+
+export async function getSmsLogs() {
+  return request<{ count: number; logs: any[] }>("/api/sms/logs");
+}
+
+// --- AIS-140 GPS & FASTag Telemetry Ingestion Gateway ----------------------
+export async function ingestAis140(packet: {
+  imei: string;
+  vehicle_registration: string;
+  lat: number;
+  lng: number;
+  speed_kmh?: number;
+  heading_deg?: number;
+  ignition?: boolean;
+  emergency_panic?: boolean;
+  altitude_m?: number;
+}) {
+  return post<any>("/api/gateway/ais140", packet);
+}
+
+export async function ingestFastag(ping: {
+  toll_plaza_id: string;
+  toll_plaza_name: string;
+  lane_id: string;
+  vehicle_registration: string;
+  tag_epc: string;
+  gross_weight_kg?: number;
+  declared_cargo?: string;
+  lat?: number;
+  lng?: number;
+}) {
+  return post<any>("/api/gateway/fastag", ping);
+}
+
+export async function getGatewayPackets() {
+  return request<{ count: number; packets: any[] }>("/api/gateway/packets");
+}
+
+// --- Government Timber Permit Bridge (NTTS) -------------------------------
+export async function verifyDigitalPermit(query: {
+  permit_id?: string;
+  vehicle_registration?: string;
+  qr_payload?: string;
+}) {
+  return post<any>("/api/permits-bridge/verify", query);
+}
+
+export async function getPermitRegistryStats() {
+  return request<any>("/api/permits-bridge/registry-stats");
+}
+
+// --- Actionable Police Interdiction & CCTNS Dispatch Gateway --------------
+export async function dispatchCctnsOrder(req: {
+  vehicle_id: string;
+  incident_ref?: string;
+  commanding_officer?: string;
+  chokepoint_id?: string;
+  action_type?: string;
+}) {
+  return post<any>("/api/cctns/dispatch-action-order", req);
+}
+
+export async function listCctnsOrders() {
+  return request<{ count: number; orders: any[] }>("/api/cctns/orders");
+}
+
+// --- Health & Satellite Core -----------------------------------------------
 export async function checkHealth() {
-  return request<{ status: string; mode: string }>("/api/health");
+  return request<{ status: string; mode: string; storage?: any }>("/api/health");
 }
 
 export async function getForests() {
@@ -102,11 +217,6 @@ export async function runDemoScenario() {
   return post<any>("/api/demo/run-scenario");
 }
 
-// Real (or synthetic-fallback) satellite compare, including the backend's
-// plain_language block — see backend/app/explain/plain_language.py. When
-// USE_LIVE_SATELLITE=1 on the backend, this is genuine Sentinel-2 imagery
-// via Microsoft Planetary Computer; the response's `after.source.source`
-// field says which ("live" / "live_unavailable_fallback" / "synthetic").
 export async function compareSatellitePlain(zoneId: string, beforeDate: string, afterDate: string) {
   const q = new URLSearchParams({ zone_id: zoneId, before_date: beforeDate, after_date: afterDate });
   return request<any>(`/api/satellite/compare?${q}`);
@@ -127,9 +237,25 @@ export function subscribeAlerts(onAlert: (alert: any) => void): () => void {
       try {
         onAlert(JSON.parse(e.data));
       } catch {
-        /* ignore malformed event */
+        /* ignore */
       }
     });
+    return () => es.close();
+  } catch {
+    return () => {};
+  }
+}
+
+export function subscribeTelemetryStream(onData: (data: any) => void): () => void {
+  try {
+    const es = new EventSource(`${BASE_URL}/api/stream/telemetry`);
+    es.onmessage = (e: MessageEvent) => {
+      try {
+        onData(JSON.parse(e.data));
+      } catch {
+        /* ignore */
+      }
+    };
     return () => es.close();
   } catch {
     return () => {};
@@ -186,10 +312,6 @@ export const api = {
   getNdvi,
   compareNdvi,
   detectChanges,
-  processChange: async (body: any) => {
-    const res = await detectChanges(body.forest_id || "zone-1", body.date_before, body.date_after);
-    return res.ok ? res.data : null;
-  },
   listChanges,
   listVehicles,
   simulateVehicleTick,
@@ -201,6 +323,7 @@ export const api = {
   listIncidents,
   runDemoScenario,
   subscribeAlerts,
+  subscribeTelemetryStream,
   compareSatellitePlain,
   getWatchStatus,
   getWatchHistory,
@@ -212,5 +335,19 @@ export const api = {
   policeDispatchLog,
   getConvoySignatures,
   getVehicleHistory,
+  getProfileApi,
+  switchRoleApi,
+  getDatabaseStatus,
+  resetDatabaseApi,
+  submitCitizenReport,
+  listCitizenReports,
+  sendSmsAlert,
+  getSmsLogs,
+  ingestAis140,
+  ingestFastag,
+  getGatewayPackets,
+  verifyDigitalPermit,
+  getPermitRegistryStats,
+  dispatchCctnsOrder,
+  listCctnsOrders,
 };
-

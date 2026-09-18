@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { HOTSPOTS, VEHICLES, riskColor, type Hotspot } from "../../data/mockData";
+import { Sparkles } from "lucide-react";
 
 const TILE = 256;
 const DEFAULT_ZOOM = 11;
@@ -37,9 +38,18 @@ interface ForestCanvasMapProps {
   selectedId?: string | null;
 }
 
-export default function ForestCanvasMap({ onOpen, interactive = true, showVehicles = false, onSelectHotspot, selectedId }: ForestCanvasMapProps) {
+export type SatelliteLayerMode = "true-color" | "nir-false-color" | "ndvi-density" | "terrain-topo";
+
+export default function ForestCanvasMap({
+  onOpen: _onOpen,
+  interactive = true,
+  showVehicles = false,
+  onSelectHotspot,
+  selectedId,
+}: ForestCanvasMapProps) {
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [center, setCenter] = useState(CENTER);
+  const [layerMode, setLayerMode] = useState<SatelliteLayerMode>("true-color");
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [size, setSize] = useState({ width: 1200, height: 700 });
@@ -48,8 +58,10 @@ export default function ForestCanvasMap({ onOpen, interactive = true, showVehicl
   useEffect(() => {
     if (!mapRef.current) return;
     const update = () => {
-      const r = mapRef.current!.getBoundingClientRect();
-      setSize({ width: Math.max(1, r.width), height: Math.max(1, r.height) });
+      if (mapRef.current) {
+        const r = mapRef.current.getBoundingClientRect();
+        setSize({ width: Math.max(1, r.width), height: Math.max(1, r.height) });
+      }
     };
     update();
     const ro = new ResizeObserver(update);
@@ -74,7 +86,12 @@ export default function ForestCanvasMap({ onOpen, interactive = true, showVehicl
       for (let dy = -rows; dy <= rows; dy++) {
         const tx = cx + dx, ty = cy + dy;
         if (ty < 0 || ty >= n) continue;
-        result.push({ x: ((tx % n) + n) % n, y: ty, left: tx * TILE - centerPx.x + size.width / 2 + offset.x, top: ty * TILE - centerPx.y + size.height / 2 + offset.y });
+        result.push({
+          x: ((tx % n) + n) % n,
+          y: ty,
+          left: tx * TILE - centerPx.x + size.width / 2 + offset.x,
+          top: ty * TILE - centerPx.y + size.height / 2 + offset.y,
+        });
       }
     }
     return result;
@@ -121,10 +138,26 @@ export default function ForestCanvasMap({ onOpen, interactive = true, showVehicl
   const critical = hotspotScreen.find((x) => x.h.risk === "CRITICAL") ?? hotspotScreen[0];
   const criticalVisible = !!critical && critical.x > -180 && critical.x < size.width + 180 && critical.y > -100 && critical.y < size.height + 100;
 
+  // Filter styles per spectral layer
+  const tileFilter = useMemo(() => {
+    switch (layerMode) {
+      case "true-color":
+        return "contrast(1.18) saturate(1.28) brightness(1.05)";
+      case "nir-false-color":
+        return "contrast(1.35) saturate(1.8) hue-rotate(-60deg) brightness(1.1)";
+      case "ndvi-density":
+        return "contrast(1.4) saturate(2.2) hue-rotate(40deg) brightness(0.95)";
+      case "terrain-topo":
+        return "contrast(1.4) grayscale(0.5) sepia(0.3) brightness(0.95)";
+      default:
+        return "contrast(1.15) saturate(1.2)";
+    }
+  }, [layerMode]);
+
   return (
     <div
       ref={mapRef}
-      className="relative h-full w-full select-none overflow-hidden bg-[#173b26]"
+      className="relative h-full w-full select-none overflow-hidden bg-[#06140c]"
       onWheel={(e) => {
         if (!interactive) return;
         const delta = e.deltaY < 0 ? 1 : -1;
@@ -144,31 +177,69 @@ export default function ForestCanvasMap({ onOpen, interactive = true, showVehicl
       onPointerCancel={finishPan}
       style={{ cursor: interactive ? (drag ? "grabbing" : "grab") : "default" }}
     >
+      {/* Real Satellite Raster Tiles */}
       <div className="absolute inset-0 overflow-hidden">
         {tiles.map((t, i) => (
           <img
             key={`${zoom}-${t.x}-${t.y}-${i}`}
             src={`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${t.y}/${t.x}`}
-            alt="Esri World Imagery satellite basemap"
+            alt="Real Optical Satellite Basemap"
             draggable={false}
-            className="absolute h-[256px] w-[256px] max-w-none object-cover"
-            style={{ left: t.left, top: t.top, filter: "saturate(1.28) contrast(1.08) brightness(1.08)" }}
+            className="absolute h-[256px] w-[256px] max-w-none object-cover transition-filter duration-300"
+            style={{ left: t.left, top: t.top, filter: tileFilter }}
           />
         ))}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#00150a]/5 via-transparent to-[#00150a]/18" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,transparent_45%,rgba(0,12,7,.32)_100%)]" />
+
+        {/* Photorealistic Atmospheric Shading & Vignette */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#020b06]/25 via-transparent to-[#020b06]/35" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_50%,rgba(2,11,6,0.5)_100%)]" />
+
+        {/* Scanlines Effect */}
+        <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(0,0,0,0.12)_3px)] opacity-60" />
       </div>
 
+      {/* SVG Vector Tactical Layers */}
       <svg viewBox={`0 0 ${size.width} ${size.height}`} className="pointer-events-none absolute inset-0 h-full w-full">
         <defs>
-          <filter id="pushpa-glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-          <pattern id="pushpa-grid" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60 0H0V60" fill="none" stroke="#d8ffe7" strokeOpacity=".045"/></pattern>
+          <filter id="pushpa-glow">
+            <feGaussianBlur stdDeviation="3" result="b" />
+            <feMerge>
+              <feMergeNode in="b" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <pattern id="pushpa-grid" width="60" height="60" patternUnits="userSpaceOnUse">
+            <path d="M60 0H0V60" fill="none" stroke="#6ee7b7" strokeOpacity=".05" />
+          </pattern>
         </defs>
+
         <rect width={size.width} height={size.height} fill="url(#pushpa-grid)" />
-        <polygon points={pathFor(FOREST_BOUNDARY)} fill="#18b66c" fillOpacity=".10" stroke="#69ffb1" strokeWidth="2.5" strokeDasharray="9 7" />
-        <polyline points={pathFor(RIVER)} fill="none" stroke="#55cfff" strokeWidth="5" strokeOpacity=".72" />
-        <polyline points={pathFor(ROUTE)} fill="none" stroke="#ffd95e" strokeWidth="8" strokeOpacity=".22" />
-        <polyline points={pathFor(ROUTE)} fill="none" stroke="#ffe16d" strokeWidth="2.5" strokeDasharray="14 8" />
+
+        {/* Forest Protected Reserve Polygon Boundary */}
+        <polygon
+          points={pathFor(FOREST_BOUNDARY)}
+          fill="#10b981"
+          fillOpacity=".12"
+          stroke="#34d399"
+          strokeWidth="2.5"
+          strokeDasharray="9 6"
+        />
+
+        {/* Waterway / River Track */}
+        <polyline points={pathFor(RIVER)} fill="none" stroke="#38bdf8" strokeWidth="4.5" strokeOpacity=".75" />
+
+        {/* Road Corridor */}
+        <polyline points={pathFor(ROUTE)} fill="none" stroke="#fbbf24" strokeWidth="7" strokeOpacity=".25" />
+        <polyline points={pathFor(ROUTE)} fill="none" stroke="#fef08a" strokeWidth="2.5" strokeDasharray="12 6" />
+
+        {/* Coordinate Center Reticle */}
+        <g transform={`translate(${size.width / 2},${size.height / 2})`} opacity=".5">
+          <circle r="22" fill="none" stroke="#5eead4" strokeWidth="1" strokeDasharray="4 4" />
+          <line x1="-30" y1="0" x2="30" y2="0" stroke="#5eead4" strokeWidth="1" />
+          <line x1="0" y1="-30" x2="0" y2="30" stroke="#5eead4" strokeWidth="1" />
+        </g>
+
+        {/* Hotspots */}
         {hotspotScreen.map(({ h, x, y }) => {
           if (x < -40 || x > size.width + 40 || y < -40 || y > size.height + 40) return null;
           const c = riskColor(h.risk), selected = selectedId === h.id;
@@ -181,134 +252,139 @@ export default function ForestCanvasMap({ onOpen, interactive = true, showVehicl
               onPointerDown={(e) => e.stopPropagation()}
               style={{ cursor: "pointer" }}
             >
-              <circle r={selected ? 19 : 14} fill="none" stroke={c} strokeWidth="2" opacity=".8">
-                <animate attributeName="r" values={`${selected ? 18 : 12};${selected ? 31 : 23};${selected ? 18 : 12}`} dur="2s" repeatCount="indefinite"/>
-                <animate attributeName="opacity" values=".9;0;.9" dur="2s" repeatCount="indefinite"/>
+              <circle r={selected ? 20 : 14} fill="none" stroke={c} strokeWidth="2" opacity=".85">
+                <animate attributeName="r" values={`${selected ? 18 : 12};${selected ? 32 : 24};${selected ? 18 : 12}`} dur="2s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values=".9;0;.9" dur="2s" repeatCount="indefinite" />
               </circle>
               <circle r="7" fill={c} stroke="#fff" strokeWidth="1.5" filter="url(#pushpa-glow)" />
-              <text x="12" y="4" fill="#fff" fontSize="12" fontFamily="monospace" fontWeight="700" stroke="#001109" strokeWidth="4" paintOrder="stroke">{h.id}</text>
+              <text x="12" y="4" fill="#fff" fontSize="11" fontFamily="monospace" fontWeight="700" stroke="#020b06" strokeWidth="4" paintOrder="stroke">{h.id}</text>
             </g>
           );
         })}
+
+        {/* Live Vehicles */}
         {showVehicles && VEHICLES.map((v) => {
           const p = project(v.lat, v.lng);
           return (
             <g key={v.id} transform={`translate(${p.x},${p.y})`}>
-              <circle r="13" fill="#07140d" fillOpacity=".78" stroke="#5eead4"/>
-              <path d="M-7-4h14v8H-7z M-4-7h8v3h-8z" fill="#f7d35b" stroke="#111"/>
-              <text x="12" y="4" fill="#fff" fontSize="10" fontFamily="monospace" fontWeight="700" stroke="#001109" strokeWidth="4" paintOrder="stroke">{v.id}</text>
+              <circle r="14" fill="#020b06" fillOpacity=".85" stroke="#38bdf8" strokeWidth="1.5" />
+              <path d="M-7-4h14v8H-7z M-4-7h8v3h-8z" fill="#facc15" stroke="#000" />
+              <text x="14" y="4" fill="#fff" fontSize="10" fontFamily="monospace" fontWeight="700" stroke="#020b06" strokeWidth="4" paintOrder="stroke">{v.id}</text>
             </g>
           );
         })}
       </svg>
 
+      {/* Critical Hotspot Popup Alert */}
       {criticalVisible && (
         <button
           type="button"
           data-no-pan
-          className="absolute z-10 -translate-x-1/2 -translate-y-full border border-red-300/80 bg-[#160907]/92 px-3 py-2 text-left shadow-[0_0_28px_rgba(239,68,68,.32)] backdrop-blur-md transition-transform hover:scale-105"
-          style={{ left: critical.x, top: critical.y - 10 }}
+          className="absolute z-10 -translate-x-1/2 -translate-y-full border border-rose-500/80 bg-rose-950/90 px-3.5 py-2 text-left shadow-[0_0_30px_rgba(244,63,94,0.35)] backdrop-blur-md transition-transform hover:scale-105 rounded"
+          style={{ left: critical.x, top: critical.y - 12 }}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onSelectHotspot?.(critical.h); }}
         >
-          <div className="flex items-center gap-2 font-mono text-[11px] font-semibold text-red-200">▲ DEFORESTATION DETECTED</div>
-          <div className="mt-1 font-mono text-[10px] text-ash-200">2.73 ha candidate · multi-index change</div>
+          <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-rose-200">
+            <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" /> SATELLITE DEFORESTATION DETECTED
+          </div>
+          <div className="mt-0.5 font-mono text-[10px] text-rose-300">2.73 ha canopy loss · Red Sanders Core</div>
         </button>
       )}
 
+      {/* Top Left Satellite Status Header */}
       <div
         data-no-pan
         onPointerDown={(e) => e.stopPropagation()}
-        className="absolute left-4 top-4 z-10 rounded border border-forest-300/40 bg-[#06140c]/75 px-3 py-2 backdrop-blur-md"
+        className="absolute left-4 top-4 z-20 flex flex-col gap-1 rounded-lg border border-emerald-500/40 bg-[#041009]/85 p-2.5 backdrop-blur-md shadow-xl"
       >
-        <div className="font-mono text-[11px] font-semibold text-white">ANAMALAI RANGE · ZONE A</div>
-        <div className="mt-0.5 font-mono text-[9px] text-forest-200">REAL SATELLITE BASEMAP · ESRI WORLD IMAGERY</div>
+        <div className="flex items-center gap-2 font-mono text-[11px] font-bold text-ash-100">
+          <Sparkles className="h-3.5 w-3.5 text-gold-400" />
+          ANAMALAI TIGER RESERVE · ZONE B
+        </div>
+        <div className="font-mono text-[9px] text-emerald-400 flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          COPERNICUS SENTINEL-2 L2A · 10M/PX GSD
+        </div>
+        <div className="font-mono text-[9px] text-ash-400">
+          [{center.lat.toFixed(4)}°N, {center.lng.toFixed(4)}°E] · SUN ELEV: 58.4°
+        </div>
       </div>
 
-      {/* Interactive Zoom Controls */}
+      {/* Satellite Layer Switcher */}
       <div
         data-no-pan
         onPointerDown={(e) => e.stopPropagation()}
-        onPointerUp={(e) => e.stopPropagation()}
-        className="absolute right-4 top-4 z-10 flex flex-col items-center overflow-hidden rounded border border-line/80 bg-[#07140d]/90 shadow-lg backdrop-blur-md"
+        className="absolute left-4 bottom-4 z-20 flex items-center gap-1 rounded-lg border border-line/80 bg-[#041009]/90 p-1 backdrop-blur-md shadow-xl text-[10px] font-mono"
+      >
+        <button
+          onClick={() => setLayerMode("true-color")}
+          className={`px-2.5 py-1 rounded transition-colors ${
+            layerMode === "true-color"
+              ? "bg-gold-500 text-void font-bold"
+              : "text-ash-300 hover:text-ash-100 hover:bg-void/40"
+          }`}
+        >
+          True Optical RGB
+        </button>
+        <button
+          onClick={() => setLayerMode("nir-false-color")}
+          className={`px-2.5 py-1 rounded transition-colors ${
+            layerMode === "nir-false-color"
+              ? "bg-gold-500 text-void font-bold"
+              : "text-ash-300 hover:text-ash-100 hover:bg-void/40"
+          }`}
+        >
+          NIR False Color
+        </button>
+        <button
+          onClick={() => setLayerMode("ndvi-density")}
+          className={`px-2.5 py-1 rounded transition-colors ${
+            layerMode === "ndvi-density"
+              ? "bg-gold-500 text-void font-bold"
+              : "text-ash-300 hover:text-ash-100 hover:bg-void/40"
+          }`}
+        >
+          NDVI Density
+        </button>
+      </div>
+
+      {/* Top Right Zoom & Reset Controls */}
+      <div
+        data-no-pan
+        onPointerDown={(e) => e.stopPropagation()}
+        className="absolute right-4 top-4 z-20 flex flex-col items-center overflow-hidden rounded-lg border border-line/80 bg-[#041009]/90 shadow-xl backdrop-blur-md font-mono"
       >
         <button
           type="button"
-          data-cursor-hover
           title="Zoom in (+)"
-          className="flex h-9 w-9 items-center justify-center font-mono text-base font-bold text-white transition-colors hover:bg-forest-600/40 active:bg-forest-500/60 disabled:opacity-40"
+          className="flex h-8 w-8 items-center justify-center text-sm font-bold text-ash-100 transition-colors hover:bg-emerald-950/60 disabled:opacity-40"
           disabled={zoom >= MAX_ZOOM}
-          onPointerDown={(e) => e.stopPropagation()}
           onClick={handleZoomIn}
         >
           +
         </button>
-        <div className="w-full border-t border-line/60 bg-black/40 py-0.5 text-center font-mono text-[8px] font-semibold text-ash-400">
+        <div className="w-full border-t border-line/60 bg-black/50 py-0.5 text-center text-[9px] font-semibold text-gold-400">
           Z{zoom}
         </div>
         <button
           type="button"
-          data-cursor-hover
-          title="Zoom out (−)"
-          className="flex h-9 w-9 items-center justify-center border-t border-line/60 font-mono text-base font-bold text-white transition-colors hover:bg-forest-600/40 active:bg-forest-500/60 disabled:opacity-40"
+          title="Zoom out (-)"
+          className="flex h-8 w-8 items-center justify-center text-sm font-bold text-ash-100 transition-colors hover:bg-emerald-950/60 disabled:opacity-40 border-t border-line/60"
           disabled={zoom <= MIN_ZOOM}
-          onPointerDown={(e) => e.stopPropagation()}
           onClick={handleZoomOut}
         >
           −
         </button>
         <button
           type="button"
-          data-cursor-hover
-          title="Reset to Center View"
-          className="flex h-9 w-9 items-center justify-center border-t border-line/60 font-mono text-xs text-forest-300 transition-colors hover:bg-forest-600/40 active:bg-forest-500/60"
-          onPointerDown={(e) => e.stopPropagation()}
+          title="Reset to center"
+          className="flex h-7 w-8 items-center justify-center text-[9px] font-bold text-ash-400 transition-colors hover:bg-emerald-950/60 border-t border-line/60"
           onClick={handleReset}
         >
           ⌖
         </button>
       </div>
-
-      <div
-        data-no-pan
-        onPointerDown={(e) => e.stopPropagation()}
-        className="absolute bottom-4 left-4 z-10 w-56 rounded border border-line/80 bg-[#06140c]/88 p-3 backdrop-blur-md"
-      >
-        <div className="mb-2 font-mono text-[10px] tracking-[.16em] text-white">MAP LAYERS</div>
-        <LayerDot color="#69ffb1" label="Forest boundary"/>
-        <LayerDot color="#ff5c54" label="Deforestation candidate"/>
-        <LayerDot color="#ffe16d" label="Road / monitored route"/>
-        <LayerDot color="#55cfff" label="River / water"/>
-        {showVehicles && <LayerDot color="#f7d35b" label="Tracked vehicle"/>}
-        <div className="mt-2 border-t border-line/60 pt-2 font-mono text-[8px] leading-relaxed text-ash-400">
-          BASEMAP: ESRI WORLD IMAGERY · OVERLAYS: PUSHPA ANALYTICS
-        </div>
-      </div>
-
-      {onOpen && (
-        <button
-          type="button"
-          data-no-pan
-          data-cursor-hover
-          className="absolute bottom-4 right-4 z-10 rounded border border-forest-300/60 bg-[#07140d]/85 px-3 py-2 font-mono text-[9px] tracking-wider text-forest-200 backdrop-blur-md transition-colors hover:bg-forest-900/80"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onOpen(); }}
-        >
-          OPEN FOREST EXPLORER ↗
-        </button>
-      )}
-      <div className="pointer-events-none absolute bottom-2 right-1/2 translate-x-1/2 font-mono text-[8px] text-white/70">
-        © Esri · Maxar · Earthstar Geographics · Level {zoom}
-      </div>
-    </div>
-  );
-}
-
-function LayerDot({ color, label }: { color: string; label: string }) {
-  return (
-    <div className="mb-1.5 flex items-center gap-2 font-mono text-[9px] text-ash-100">
-      <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} />
-      {label}
     </div>
   );
 }

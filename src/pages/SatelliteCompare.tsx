@@ -791,6 +791,13 @@ function DynamicSatelliteRenderer({
             style={{ left: t.left, top: t.top }}
           />
         ))}
+
+        {/* Photorealistic Atmospheric Vignette */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#020b06]/20 via-transparent to-[#020b06]/35" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_50%,rgba(2,11,6,0.45)_100%)]" />
+
+        {/* Scanlines */}
+        <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(0,0,0,0.10)_3px)] opacity-60" />
       </div>
 
       {/* Dynamic NDVI overlay tint if in NDVI mode */}
@@ -816,7 +823,19 @@ function DynamicSatelliteRenderer({
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+          <pattern id="sat-grid" width="50" height="50" patternUnits="userSpaceOnUse">
+            <path d="M50 0H0V50" fill="none" stroke="#6ee7b7" strokeOpacity=".04" />
+          </pattern>
         </defs>
+
+        <rect width={size.width} height={size.height} fill="url(#sat-grid)" />
+
+        {/* Center reticle */}
+        <g transform={`translate(${size.width / 2},${size.height / 2})`} opacity=".35">
+          <circle r="20" fill="none" stroke="#5eead4" strokeWidth="1" strokeDasharray="4 4" />
+          <line x1="-25" y1="0" x2="25" y2="0" stroke="#5eead4" strokeWidth="1" />
+          <line x1="0" y1="-25" x2="0" y2="25" stroke="#5eead4" strokeWidth="1" />
+        </g>
 
         {/* Forest boundary */}
         <polygon
