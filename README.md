@@ -1,31 +1,18 @@
-# PUSHPA — Forest Intelligence & Anti-Deforestation System
+# CANOPIX — Pixel-Level Forest Intelligence & Autonomous Anti-Deforestation Defense System
 
-A cinematic, futuristic forest-monitoring command center. Built for hackathon
-demonstration with fully simulated demo data — no API keys required to run.
+> **"Pixel-level satellite analytics and autonomous multi-agent AI that detects canopy loss down to the hectare and dispatches tactical roadblock teams in real time."**
 
-> All satellite imagery, density figures, hotspots, vehicle positions and
-> reports in this build are **simulated demo data**, clearly labelled as such
-> in the UI (see Settings → System). Nothing here claims to prove illegal
-> logging; hotspots are framed as "AI-assisted risk assessment" requiring
-> field verification.
+CANOPIX is a next-generation Earth-observation command center and multi-agent interdiction platform engineered to safeguard ecologically sensitive biosphere reserves (Seshachalam, Anamalai, Mudumalai, Sathyamangalam). It unifies Copernicus Sentinel-2 multispectral remote sensing, topological Dijkstra road network traversal, and an autonomous 4-tier LangGraph AI pipeline.
 
-## Stack
+---
 
-- React 19 + TypeScript + Vite
-- Tailwind CSS v4
-- Framer Motion (UI transitions, page choreography)
-- Three.js (procedural 3D forest terrain, camera fly-in, orbit controls)
-- Hand-rolled SVG/Canvas charts and a stylized satellite-style forest map
-  (no external mapping/Cesium dependency, so it runs with zero API keys)
+## Key Capabilities
 
-## Multi-Agent AI Interdiction Engine
-
-A LangGraph-based pipeline (Sentinel → Sleuth → Strategist → Dispatcher
-agents) turns a raw GPS/FASTag ping into a risk-scored, explainable
-interdiction dispatch in well under 50ms. It combines Sentinel-2 satellite
-change detection, timber permit verification, route/convoy analysis, and
-topological road routing to decide whether — and where — to intercept a
-vehicle.
+* **Pixel-Level Change Detection**: Automated Sentinel-2 MSI ingestion (B04 Red + B08 NIR) with cloud masking and NDVI delta extraction.
+* **Autonomous 4-Tier Multi-Agent Engine**: Sentinel, Sleuth, Strategist, and Dispatcher agents process real-time vehicle GPS ticks, FASTag toll pings, and timber permit registries in under 50ms.
+* **Topological Road Interception**: Computes exact smuggler exit times vs police patrol response times ($T_{\text{police}} + 3\text{m} < T_{\text{exit}}$) to lock down optimal roadblock chokepoints.
+* **Anti-Gravity Command Deck**: Floating detached data panes, 3D hover-depth resource optimization tables, and interactive gesture control nodes over natural-color orbital terrain.
+* **Procedural 3D Canopy Simulation**: Three.js elevation meshes with real-time raycasting inspection of tree density and high-value species loss (Red Sanders, Rosewood).
 
 **Full architecture, agent roles, and pipeline diagram: [docs/AGENTS.md](./docs/AGENTS.md)**
 

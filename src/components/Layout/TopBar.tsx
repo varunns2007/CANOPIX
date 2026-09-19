@@ -31,7 +31,7 @@ export default function TopBar({ active }: { active: PageId }) {
   return (
     <header className="relative z-30 flex h-14 shrink-0 items-center justify-between border-b border-line/70 bg-bark/90 px-4 backdrop-blur-md">
       <div className="flex items-center gap-3">
-        <span className="font-display text-sm tracking-[0.2em] text-ash-100 font-bold">PUSHPA</span>
+        <span className="font-display text-sm tracking-[0.2em] text-ash-100 font-bold">CANOPIX</span>
         <span className="text-line">/</span>
         <span className="font-mono text-xs tracking-[0.1em] text-gold-400 font-semibold">{label.toUpperCase()}</span>
       </div>

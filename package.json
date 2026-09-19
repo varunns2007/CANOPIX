@@ -1,5 +1,5 @@
 {
-  "name": "pushpa",
+  "name": "canopix",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -49,8 +49,8 @@
     "wait-on": "^9.0.1"
   },
   "build": {
-    "appId": "com.pushpa.forestintelligence",
-    "productName": "PUSHPA Forest Intelligence",
+    "appId": "com.canopix.forestintelligence",
+    "productName": "CANOPIX Forest Intelligence",
     "directories": {
       "output": "release"
     },

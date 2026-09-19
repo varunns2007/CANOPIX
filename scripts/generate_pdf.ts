@@ -2,7 +2,7 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
 
-const outputPath = path.resolve(process.cwd(), "PUSHPA_Comprehensive_System_and_AI_Agents_Guide.pdf");
+const outputPath = path.resolve(process.cwd(), "CANOPIX_Comprehensive_System_and_AI_Agents_Guide.pdf");
 const doc = new PDFDocument({
   size: "A4",
   margins: { top: 45, bottom: 45, left: 45, right: 45 },
@@ -84,12 +84,12 @@ doc.rect(45, 45, 505, 80).fill(COLORS.primary);
 doc.fillColor(COLORS.white)
   .font("Helvetica-Bold")
   .fontSize(22)
-  .text("PUSHPA SYSTEM ARCHITECTURE", 60, 60);
+  .text("CANOPIX SYSTEM ARCHITECTURE", 60, 60);
 
 doc.fillColor("#a7f3d0")
   .font("Helvetica")
   .fontSize(10)
-  .text("Predictive Utility for Satellite Hotspots & Protected Area Interdiction", 60, 88);
+  .text("Pixel-Level Forest Intelligence & Autonomous Smuggling Interdiction", 60, 88);
 
 doc.fillColor("#d1fae5")
   .font("Helvetica-Bold")
@@ -106,7 +106,7 @@ doc.fillColor(COLORS.body)
   .font("Helvetica")
   .fontSize(9)
   .text(
-    "PUSHPA is an end-to-end, high-precision forest intelligence and anti-poaching interdiction platform designed to safeguard ecologically sensitive biosphere reserves (such as Seshachalam, Anamalai, and Mudumalai). It unifies Copernicus Sentinel-2 multispectral remote sensing, topological Dijkstra road interception routing, real-time vehicle GPS / FASTag toll telemetry, and an autonomous 4-tier LangGraph multi-agent AI system.",
+    "CANOPIX is an end-to-end, high-precision forest intelligence and anti-poaching interdiction platform designed to safeguard ecologically sensitive biosphere reserves (such as Seshachalam, Anamalai, and Mudumalai). It unifies Copernicus Sentinel-2 multispectral remote sensing, topological Dijkstra road interception routing, real-time vehicle GPS / FASTag toll telemetry, and an autonomous 4-tier LangGraph multi-agent AI system.",
     { width: 505, lineGap: 2.5 }
   );
 
@@ -409,7 +409,7 @@ for (let i = 0; i < totalPages; i++) {
   doc.fillColor(COLORS.muted)
     .font("Helvetica")
     .fontSize(7.5)
-    .text("PUSHPA Forest Intelligence & Interdiction System · Confidential & Tactical Reference", 45, 792)
+    .text("CANOPIX Forest Intelligence & Interdiction System · Confidential & Tactical Reference", 45, 792)
     .text(`Page ${i + 1} of ${totalPages}`, 480, 792, { align: "right" });
 }
 

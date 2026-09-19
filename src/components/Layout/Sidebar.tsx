@@ -11,10 +11,10 @@ export default function Sidebar({ active, onNavigate }: SidebarProps) {
     <aside className="relative z-20 flex h-full w-[76px] flex-col items-center border-r border-line/70 bg-bark/80 py-5 backdrop-blur-sm lg:w-[220px] lg:items-stretch lg:px-3">
       <div className="mb-8 flex items-center gap-2 px-2">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center border border-mint-500/50 font-display text-lg text-mint-400">
-          P
+          C
         </div>
         <div className="hidden flex-col lg:flex">
-          <span className="font-display text-sm tracking-[0.25em] text-ash-100">PUSHPA</span>
+          <span className="font-display text-sm tracking-[0.25em] text-ash-100">CANOPIX</span>
           <span className="font-mono text-[9px] tracking-[0.15em] text-ash-500">FOREST INTEL</span>
         </div>
       </div>
