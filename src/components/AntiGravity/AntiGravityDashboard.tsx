@@ -35,10 +35,10 @@ export default function AntiGravityDashboard({ onNavigate }: { onNavigate?: (pag
     <div className="relative h-full w-full overflow-hidden bg-slate-950 font-sans">
       {/* =========================================================================
           1. REALISTIC SATELLITE IMAGE BASE LAYER (Top-down Orbital Perspective)
-          High-resolution satellite imagery composite with Arabian Sea (left),
-          Western Ghats tropical forests, agricultural plain, and Bay of Bengal (right)
+          High-resolution satellite imagery composite dynamically rendering
+          OPTICAL, NDVI, ELEVATION, and INFRARED spectral modes
           ========================================================================= */}
-      <OrbitalSatelliteBase showGrid={true} showCoordinates={true} sunGlint={true} />
+      <OrbitalSatelliteBase spectrum={activeLayer} showGrid={true} showCoordinates={true} sunGlint={true} />
 
       {/* Top Orbital Telemetry Marker */}
       <div className="pointer-events-none absolute top-3 right-4 z-10 flex items-center gap-3 font-mono text-[10px] text-emerald-300/90 bg-slate-950/80 px-3 py-1 rounded-md border border-emerald-500/30 backdrop-blur-md shadow-lg">
@@ -95,24 +95,34 @@ export default function AntiGravityDashboard({ onNavigate }: { onNavigate?: (pag
             </ElevatedControlButton>
           </div>
 
-          {/* Layer Selector Elevated Controls */}
+          {/* Spectrum Mode Selector */}
           <div className="flex items-center gap-1.5 rounded-xl border border-white/80 bg-white/95 p-1 text-slate-900 shadow-[0_6px_16px_rgba(0,0,0,0.25)] backdrop-blur-md">
             <span className="px-2 font-mono text-[10px] font-bold text-slate-500 uppercase">SPECTRUM:</span>
-            {(["optical", "ndvi", "elevation", "infrared"] as const).map((layer) => (
-              <button
-                key={layer}
-                type="button"
-                data-cursor-hover
-                onClick={() => setActiveLayer(layer)}
-                className={`rounded-lg px-2.5 py-1 font-mono text-[10px] font-bold uppercase transition-all ${
-                  activeLayer === layer
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                }`}
-              >
-                {layer}
-              </button>
-            ))}
+            {(["optical", "ndvi", "elevation", "infrared"] as const).map((layer) => {
+              const isCurrent = activeLayer === layer;
+              return (
+                <button
+                  key={layer}
+                  type="button"
+                  data-cursor-hover
+                  onClick={() => setActiveLayer(layer)}
+                  className={`relative rounded-lg px-3 py-1 font-mono text-[10px] font-bold uppercase transition-all duration-200 ${
+                    isCurrent
+                      ? "bg-slate-900 text-white shadow-md scale-105"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
+                >
+                  {layer}
+                  {isCurrent && (
+                    <motion.span
+                      layoutId="active-spectrum-dot"
+                      className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-emerald-400"
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -123,7 +133,7 @@ export default function AntiGravityDashboard({ onNavigate }: { onNavigate?: (pag
             {/* Standard UI Floating Element (Anti-Gravity Style): Featured Analysis */}
             <StandardFloatingCard
               title="Featured Analysis"
-              subtitle="Orbital Deep-Scan Sector A-4"
+              subtitle={`Orbital Deep-Scan · Mode: ${activeLayer.toUpperCase()}`}
               badge="LIVE TELEMETRY"
               badgeColor="#059669"
               icon={<Sparkles className="h-4 w-4" />}
@@ -132,14 +142,19 @@ export default function AntiGravityDashboard({ onNavigate }: { onNavigate?: (pag
             >
               <div className="space-y-3">
                 <p className="font-sans text-xs leading-relaxed text-slate-700">
-                  Orbital reflectance algorithms detected abnormal canopy depletion along the southern Anamalai corridor. Red Sanders density index dropped <span className="font-bold text-rose-600">-12.4%</span> over 45 days.
+                  {activeLayer === "optical" && "True-color photographic RGB view composite. Visual canopy monitoring active across Anamalai and Seshachalam reserves."}
+                  {activeLayer === "ndvi" && "Normalized Difference Vegetation Index active. Chlorophyll delta highlights active canopy depletion (-12.4% over 45 days)."}
+                  {activeLayer === "elevation" && "Digital Elevation Model active. Topographic slope gradient evaluates chokepoint barriers and valley escape routes."}
+                  {activeLayer === "infrared" && "Color Infrared False-Color active. Penetrates morning haze to expose bare soil disturbance, dry timber, and logging tracks."}
                 </p>
 
                 <div className="grid grid-cols-2 gap-2 pt-1 font-mono">
                   <div className="rounded-lg bg-slate-50 border border-slate-200 p-2.5 shadow-inner">
-                    <div className="text-[9px] text-slate-500 uppercase">Tree Canopy Health</div>
+                    <div className="text-[9px] text-slate-500 uppercase">
+                      {activeLayer === "ndvi" ? "Mean NDVI Index" : activeLayer === "elevation" ? "Mean Altitude" : "Tree Canopy Health"}
+                    </div>
                     <div className="mt-0.5 text-lg font-bold text-emerald-700">
-                      <CountUp value={ANALYTICS_SUMMARY.canopyDensityPct} decimals={1} />%
+                      {activeLayer === "ndvi" ? "0.824" : activeLayer === "elevation" ? "1,240 m" : `${ANALYTICS_SUMMARY.canopyDensityPct}%`}
                     </div>
                   </div>
                   <div className="rounded-lg bg-slate-50 border border-slate-200 p-2.5 shadow-inner">
@@ -164,34 +179,116 @@ export default function AntiGravityDashboard({ onNavigate }: { onNavigate?: (pag
 
             {/* Standard UI Floating Element: Legend Box & Air Gap Status */}
             <StandardFloatingCard
-              title="Air-Gap Legend & Spectral Bounds"
-              subtitle="Multispectral radiometric calibrated"
+              title={`Spectral Legend · ${activeLayer.toUpperCase()}`}
+              subtitle="Calibrated Copernicus Sentinel-2 MSI"
               styleVariant="white"
               elevation="medium"
               delay={0.15}
             >
               <div className="space-y-2 font-mono text-[11px]">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full bg-emerald-500 shadow-sm" />
-                    <span className="text-slate-800 font-semibold">Dense Canopy (NDVI &gt; 0.78)</span>
-                  </div>
-                  <span className="text-slate-500">68.4%</span>
-                </div>
-                <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full bg-amber-500 shadow-sm" />
-                    <span className="text-slate-800 font-semibold">Deciduous / Thinning</span>
-                  </div>
-                  <span className="text-slate-500">22.1%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full bg-rose-500 shadow-sm" />
-                    <span className="text-slate-800 font-semibold">Severe Clearance / Timber Loss</span>
-                  </div>
-                  <span className="text-rose-600 font-bold">9.5%</span>
-                </div>
+                {activeLayer === "optical" && (
+                  <>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-emerald-600 shadow-sm" />
+                        <span className="text-slate-800 font-semibold">Dense Tropical Rainforest</span>
+                      </div>
+                      <span className="text-slate-500">68.4%</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-amber-600 shadow-sm" />
+                        <span className="text-slate-800 font-semibold">Agricultural / Plain</span>
+                      </div>
+                      <span className="text-slate-500">22.1%</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-rose-500 shadow-sm" />
+                        <span className="text-slate-800 font-semibold">Cleared Land / Timber Loss</span>
+                      </div>
+                      <span className="text-rose-600 font-bold">9.5%</span>
+                    </div>
+                  </>
+                )}
+
+                {activeLayer === "ndvi" && (
+                  <>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-emerald-500 shadow-sm" />
+                        <span className="text-slate-800 font-semibold">High Chlorophyll (&gt;0.78)</span>
+                      </div>
+                      <span className="text-emerald-600 font-bold">PRISTINE</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-amber-500 shadow-sm" />
+                        <span className="text-slate-800 font-semibold">Thinning (0.45 - 0.78)</span>
+                      </div>
+                      <span className="text-amber-600 font-bold">WARNING</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-rose-600 shadow-sm" />
+                        <span className="text-slate-800 font-semibold">Deforested / Cleared (&lt;0.45)</span>
+                      </div>
+                      <span className="text-rose-600 font-bold">CRITICAL</span>
+                    </div>
+                  </>
+                )}
+
+                {activeLayer === "elevation" && (
+                  <>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-stone-300 shadow-sm" />
+                        <span className="text-slate-800 font-semibold">Mountain Peaks (&gt;1,800m)</span>
+                      </div>
+                      <span className="text-slate-600">CREST</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-stone-500 shadow-sm" />
+                        <span className="text-slate-800 font-semibold">Mid-Altitude (800 - 1,800m)</span>
+                      </div>
+                      <span className="text-slate-600">SLOPE</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-stone-700 shadow-sm" />
+                        <span className="text-slate-800 font-semibold">Valley Chokepoint (&lt;800m)</span>
+                      </div>
+                      <span className="text-emerald-700 font-bold">ROADBLOCK</span>
+                    </div>
+                  </>
+                )}
+
+                {activeLayer === "infrared" && (
+                  <>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-rose-600 shadow-sm" />
+                        <span className="text-slate-800 font-semibold">Living Foliage (Ruby NIR)</span>
+                      </div>
+                      <span className="text-rose-600 font-bold">HIGH NIR</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-cyan-500 shadow-sm" />
+                        <span className="text-slate-800 font-semibold">Bare Soil / Logging Tracks</span>
+                      </div>
+                      <span className="text-cyan-600 font-bold">SOIL ANOMALY</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-slate-900 shadow-sm" />
+                        <span className="text-slate-800 font-semibold">Water Reservoirs / Deep Sea</span>
+                      </div>
+                      <span className="text-slate-700">ABSORPTION</span>
+                    </div>
+                  </>
+                )}
               </div>
             </StandardFloatingCard>
           </div>
