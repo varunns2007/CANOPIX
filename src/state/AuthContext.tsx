@@ -45,6 +45,11 @@ export const PRESET_ROLES: Record<string, UserRoleProfile> = {
   },
 };
 
+// Matches the backend's default PUSHPA_DEMO_PASSWORD (see backend/.env.example).
+// If you change that env var on the backend, update this to match, or the
+// role switcher below will get a 401 for every elevated role.
+const DEMO_PASSWORD = (import.meta as any).env?.VITE_DEMO_PASSWORD || "pushpa-demo";
+
 interface AuthContextType {
   currentUser: UserRoleProfile;
   authToken: string | null;
@@ -99,11 +104,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("pushpa_active_role", roleId);
 
     try {
-      const res = await switchRoleApi(roleId);
+      const res = await switchRoleApi(roleId, DEMO_PASSWORD);
       if (res.ok && res.data.access_token) {
         setAuthToken(res.data.access_token);
         localStorage.setItem("pushpa_auth_token", res.data.access_token);
       }
+      // A non-ok result (e.g. wrong demo password after it's been changed
+      // in backend/.env) just means we stay on the locally-selected profile
+      // without a verified token -- the UI still switches roles for demo
+      // purposes, it just won't carry real backend authorization.
     } catch {
       // Fallback in local/offline demo mode
     }

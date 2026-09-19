@@ -2,18 +2,30 @@
 @import "tailwindcss";
 
 @theme {
-  --color-void: #020617;
-  --color-bark: #090f15;
-  --color-panel: #0d161d;
-  --color-panel-2: #121e27;
-  --color-line: #1e2e3b;
+  /* Base neutrals — deep, near-black, green-tinted (matches reference:
+     dark background lets the green UI elements and mint highlights read
+     as the dominant color story instead of competing with a lit navy). */
+  --color-void: #030805;
+  --color-bark: #06110b;
+  --color-panel: #0a1810;
+  --color-panel-2: #0f2317;
+  --color-line: #1b3527;
 
-  /* Forest — healthy vegetation */
-  --color-forest-950: #031309;
+  /* Forest — primary UI color (panels, graph lines, primary buttons) */
+  --color-forest-950: #02120a;
   --color-forest-900: #072214;
   --color-forest-700: #105932;
-  --color-forest-500: #10b981;
+  --color-forest-500: #16a34a;
   --color-forest-400: #34d399;
+
+  /* Mint — accent light, for highlights, active states, and glow (matches
+     the reference's "ACCENT LIGHT" swatch). This is the app's brightest,
+     most attention-grabbing color now, reserved for things that should
+     draw the eye: active nav state, key metrics, primary CTAs. */
+  --color-mint-600: #5eead4;
+  --color-mint-500: #7dfad1;
+  --color-mint-400: #a7f3d0;
+  --color-mint-300: #d1fae5;
 
   /* Ember — danger / general risk / active alerts */
   --color-earth-700: #881337;
@@ -27,7 +39,8 @@
   --color-value-400: #fb923c;
   --color-value-300: #fdba74;
 
-  /* Amber — general UI accent / system gold */
+  /* Amber — reserved for warning-severity risk states and specific CTAs,
+     no longer the default UI accent (mint has taken that role). */
   --color-gold-600: #b45309;
   --color-gold-500: #f59e0b;
   --color-gold-400: #fbbf24;
@@ -38,9 +51,19 @@
   --color-signal-400: #22d3ee;
   --color-signal-300: #67e8f9;
 
+  /* Intel — violet accent, contrasts against the green/mint/amber palette
+     above. Used for AI-agent / intelligence-analysis surfaces (multi-agent
+     interdiction, convoy correlation, GIS overlays) so they read as a
+     distinct "system" from the forest/alert colors without clashing. */
+  --color-intel-700: #4c1d95;
+  --color-intel-600: #6d28d9;
+  --color-intel-500: #8b5cf6;
+  --color-intel-400: #a78bfa;
+  --color-intel-300: #c4b5fd;
+
   --color-ash-100: #f8fafc;
-  --color-ash-300: #cbd5e1;
-  --color-ash-500: #64748b;
+  --color-ash-300: #d6dfeb;
+  --color-ash-500: #7d90a8;
   --color-ash-700: #334155;
 
   --font-display: 'Oswald', 'Plus Jakarta Sans', sans-serif;
@@ -50,6 +73,41 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* Smoother global motion: every interactive element eases color/background/
+   border/transform changes with a consistent, pleasant curve instead of
+   snapping instantly or relying on each component to opt in individually. */
+html {
+  scroll-behavior: smooth;
+}
+
+a, button, input, select, textarea,
+[role="button"], [data-cursor-hover] {
+  transition: background-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.18s ease,
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.2s ease;
+}
+
+a:focus-visible, button:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible, [role="button"]:focus-visible {
+  outline: 2px solid var(--color-mint-400);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 html, body, #root {
@@ -120,6 +178,14 @@ body {
   box-shadow: 0 0 25px -3px rgba(245, 158, 11, 0.35);
 }
 
+.glow-intel {
+  box-shadow: 0 0 25px -3px rgba(139, 92, 246, 0.4);
+}
+
+.glow-mint {
+  box-shadow: 0 0 28px -2px rgba(125, 250, 209, 0.45);
+}
+
 .text-glow-emerald {
   text-shadow: 0 0 16px rgba(16, 185, 129, 0.45);
 }
@@ -134,6 +200,14 @@ body {
 
 .text-glow-rose {
   text-shadow: 0 0 20px rgba(244, 63, 94, 0.5);
+}
+
+.text-glow-intel {
+  text-shadow: 0 0 18px rgba(139, 92, 246, 0.55);
+}
+
+.text-glow-mint {
+  text-shadow: 0 0 18px rgba(125, 250, 209, 0.6);
 }
 
 .bg-tech-grid {
@@ -166,10 +240,164 @@ body {
 }
 
 @keyframes float-smooth {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes float-levitate {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-4px) rotate(0.4deg); }
+  66% { transform: translateY(-7px) rotate(-0.3deg); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(125, 250, 209, 0.25), 0 14px 28px -6px rgba(0, 0, 0, 0.6); }
+  50% { box-shadow: 0 0 25px rgba(125, 250, 209, 0.45), 0 20px 36px -6px rgba(0, 0, 0, 0.7); }
+}
+
+@keyframes shadow-breathe {
+  0%, 100% { transform: scale(1) translateY(0); opacity: 0.7; }
+  50% { transform: scale(0.92) translateY(3px); opacity: 0.45; }
 }
 
 .animate-float-smooth {
   animation: float-smooth 4s ease-in-out infinite;
+}
+
+.animate-float-levitate {
+  animation: float-levitate 6s ease-in-out infinite;
+}
+
+.animate-shadow-breathe {
+  animation: shadow-breathe 4s ease-in-out infinite;
+}
+
+/* ============================================================
+   ANTI-GRAVITY DESIGN SYSTEM (Crisp Floating Elements & Deep Air Gaps)
+   ============================================================ */
+
+/* 1. Standard UI Floating Element (Crisp white / light card with deep contact shadows) */
+.ag-floating-card-white {
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    0 10px 20px -2px rgba(0, 0, 0, 0.25),
+    0 24px 44px -8px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ag-floating-card-white:hover {
+  transform: translateY(-4px);
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.1),
+    0 16px 32px -4px rgba(0, 0, 0, 0.35),
+    0 32px 64px -12px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+/* 2. Elevated Interactive Control (Pillars of force, anti-gravity glow & contact shadow matrix) */
+.ag-elevated-control-btn {
+  position: relative;
+  background: linear-gradient(135deg, #105932 0%, #072214 100%);
+  color: #d1fae5;
+  border: 1px solid rgba(125, 250, 209, 0.4);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  box-shadow: 
+    0 4px 10px rgba(0, 0, 0, 0.4),
+    0 14px 28px -4px rgba(0, 0, 0, 0.6),
+    0 0 16px rgba(125, 250, 209, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ag-elevated-control-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  border-color: rgba(125, 250, 209, 0.8);
+  box-shadow: 
+    0 8px 16px rgba(0, 0, 0, 0.5),
+    0 20px 38px -6px rgba(0, 0, 0, 0.7),
+    0 0 26px rgba(125, 250, 209, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+.ag-elevated-control-btn-light {
+  position: relative;
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+  color: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    0 14px 30px -4px rgba(0, 0, 0, 0.35),
+    0 0 20px rgba(255, 255, 255, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ag-elevated-control-btn-light:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 
+    0 8px 18px rgba(0, 0, 0, 0.25),
+    0 24px 44px -6px rgba(0, 0, 0, 0.45),
+    0 0 28px rgba(255, 255, 255, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+/* 3. Dashboard Detached Data Layer (Independent floating panes with deep air gap) */
+.ag-detached-pane {
+  background: rgba(10, 24, 16, 0.78);
+  border: 1px solid rgba(125, 250, 209, 0.15);
+  border-radius: 12px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 
+    0 6px 12px rgba(0, 0, 0, 0.35),
+    0 18px 36px -6px rgba(0, 0, 0, 0.65),
+    0 36px 72px -12px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ag-detached-pane:hover {
+  border-color: rgba(125, 250, 209, 0.35);
+  transform: translateY(-3px);
+  box-shadow: 
+    0 10px 20px rgba(0, 0, 0, 0.45),
+    0 26px 48px -6px rgba(0, 0, 0, 0.75),
+    0 48px 90px -12px rgba(0, 0, 0, 0.9),
+    0 0 24px rgba(125, 250, 209, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* 4. Detailed Data Panel with Hover Depth (3D perspective & multi-directional shadow) */
+.ag-depth-panel {
+  perspective: 1000px;
+  transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+}
+
+/* 5. Contact Shadow Matrix (Simulates physical shadow cast on satellite terrain beneath) */
+.ag-contact-shadow {
+  filter: blur(12px);
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.3) 60%, transparent 80%);
+  pointer-events: none;
+}
+
+.ag-contact-shadow-node {
+  filter: blur(4px);
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 75%);
+  pointer-events: none;
 }

@@ -9,21 +9,16 @@ from app.api import (
     interdiction,
     routes_alerts,
     routes_auth,
-    routes_cctns,
     routes_changes,
-    routes_citizen_reports,
     routes_convoy,
     routes_database,
     routes_demo,
     routes_forests,
     routes_permits,
-    routes_permits_bridge,
     routes_police,
     routes_risk,
     routes_satellite,
-    routes_sms,
     routes_stream,
-    routes_telemetry_gateway,
     routes_vehicles,
     routes_watch,
 )
@@ -34,15 +29,27 @@ from app.scheduler.watch import start_scheduler, stop_scheduler
 app = FastAPI(
     title="PUSHPA Backend",
     description=(
-        "Forest Intelligence & Anti-Smuggling API with Real Satellite Photos, "
-        "Citizen Reporting, Real SMS Alerts, AIS-140/FASTag Telemetry, and CCTNS Police Dispatch."
+        "Forest Intelligence & Anti-Smuggling API with Persistent Storage, "
+        "RBAC Authentication, and Real-Time Multi-Agent Interdiction."
     ),
-    version="0.4.0",
+    version="0.3.0",
 )
+
+_default_origins = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173"
+_allowed_origins = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", _default_origins).split(",")
+    if origin.strip()
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    # Explicit origin allowlist (configurable via ALLOWED_ORIGINS) instead of
+    # "*" -- a wildcard origin combined with allow_credentials=True is both
+    # rejected by browsers and an unnecessarily open door for anything that
+    # isn't. Add your deployed frontend's origin to ALLOWED_ORIGINS in
+    # backend/.env when you're not just running the Vite dev server locally.
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -51,11 +58,6 @@ app.add_middleware(
 app.include_router(routes_auth.router)
 app.include_router(routes_database.router)
 app.include_router(routes_stream.router)
-app.include_router(routes_citizen_reports.router)
-app.include_router(routes_sms.router)
-app.include_router(routes_telemetry_gateway.router)
-app.include_router(routes_permits_bridge.router)
-app.include_router(routes_cctns.router)
 app.include_router(interdiction.router)
 app.include_router(routes_forests.router)
 app.include_router(routes_satellite.router)
@@ -88,7 +90,7 @@ def _on_shutdown():
 
 @app.get("/api/health")
 def health():
-    live = os.getenv("USE_LIVE_SATELLITE", "1") == "1"
+    live = os.getenv("USE_LIVE_SATELLITE", "0") == "1"
     return {
         "status": "ok",
         "mode": "LIVE" if live else "DEMO",

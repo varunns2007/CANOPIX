@@ -1,11 +1,14 @@
+# --- Core (needed for every mode, demo or live) -----------------------------
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 pydantic>=2.9.2
 numpy==1.26.4
 scipy==1.13.1
 sse-starlette==2.1.3
+python-dotenv>=1.0.1
+pyjwt>=2.9.0
 
-# Real-Time Multi-Agent Interdiction Engine
+# --- Real-Time Multi-Agent Interdiction Engine (core -- always needed) ------
 langgraph>=0.2.0
 langchain-core>=0.3.0
 shapely>=2.0.0
@@ -14,9 +17,11 @@ requests>=2.31.0
 jinja2>=3.1.4
 pytest>=8.0.0
 
-# Live satellite feed dependencies
+# --- Live satellite feed dependencies (only needed if USE_LIVE_SATELLITE=1)-
+# Real Sentinel-2 imagery via Microsoft Planetary Computer. Safe to skip
+# these if you're staying in demo mode with synthetic satellite data --
+# app/satellite/live_client.py imports them lazily and falls back cleanly.
 pystac-client==0.8.5
 planetary-computer==1.0.0
 rasterio==1.3.10
 apscheduler==3.10.4
-

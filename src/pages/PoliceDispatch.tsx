@@ -51,7 +51,27 @@ export default function PoliceDispatch() {
       const [s, d, c] = await Promise.all([listPoliceStations(), policeDispatchLog(20), getConvoySignatures()]);
       if (cancelled) return;
       if (s.ok && s.data.stations?.length) {
-        setStations(s.data.stations);
+        // The live backend's station records match RealPoliceStation
+        // field-for-field except `type` (Police Station / Forest Checkpost
+        // / Range Office), which it doesn't send -- infer a reasonable
+        // fallback from the name rather than leaving it undefined.
+        const mapped: RealPoliceStation[] = s.data.stations.map((st) => ({
+          station_id: st.station_id,
+          name: st.name,
+          jurisdiction: st.jurisdiction,
+          district: st.district,
+          zone_id: st.zone_id,
+          lat: st.lat,
+          lng: st.lng,
+          phone: st.phone,
+          email: st.email,
+          type: /checkpost/i.test(st.name)
+            ? "Forest Checkpost"
+            : /range office/i.test(st.name)
+              ? "Range Office"
+              : "Police Station",
+        }));
+        setStations(mapped);
         setLive(true);
       }
       if (d.ok && d.data.dispatches?.length) setDispatches(d.data.dispatches);

@@ -15,6 +15,9 @@
     "mobile:ios": "npm run build && npx cap sync ios && npx cap open ios"
   },
   "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
+    "@capacitor/ios": "^7.4.3",
     "@react-google-maps/api": "^2.20.8",
     "@types/three": "^0.185.4",
     "framer-motion": "^13.2.0",
@@ -22,29 +25,28 @@
     "lucide-react": "^1.42.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "three": "^0.185.1",
-    "@capacitor/core": "^7.4.3",
-    "@capacitor/android": "^7.4.3",
-    "@capacitor/ios": "^7.4.3"
+    "three": "^0.185.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.4.3",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.13.3",
+    "@types/pdfkit": "^0.17.6",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
     "autoprefixer": "^10.5.5",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.0.0",
+    "electron": "^38.1.0",
+    "electron-builder": "^26.0.12",
     "oxlint": "^1.79.0",
+    "pdfkit": "^0.20.2",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.2.2",
-    "electron": "^38.1.0",
-    "electron-builder": "^26.0.12",
-    "concurrently": "^9.2.1",
-    "wait-on": "^9.0.1",
-    "cross-env": "^10.0.0",
-    "@capacitor/cli": "^7.4.3"
+    "wait-on": "^9.0.1"
   },
   "build": {
     "appId": "com.pushpa.forestintelligence",

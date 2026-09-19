@@ -19,8 +19,20 @@ export default function RiskAnalyticsPage() {
   useEffect(() => {
     listRisk().then((res) => {
       if (res.ok && res.data.results?.length) {
-        setResults(res.data.results);
-        setSelected(res.data.results[0]);
+        // The live backend's RiskResult doesn't carry the decorative
+        // registration_number/make_model fields the demo dataset shows --
+        // those are demo-only flavour text, so we fall back to the
+        // vehicle_id it does send rather than pretending the field exists.
+        const mapped: RiskResult[] = res.data.results.map((r) => ({
+          vehicle_id: r.vehicle_id,
+          registration_number: r.vehicle_id,
+          make_model: "Live telemetry vehicle",
+          risk_score: r.risk_score,
+          rating: r.rating,
+          breakdown: r.breakdown,
+        }));
+        setResults(mapped);
+        setSelected(mapped[0]);
       }
     });
   }, []);

@@ -3,25 +3,55 @@ Security, Authentication & Role-Based Access Control (RBAC) for PUSHPA.
 
 Defines roles, credentials, JWT generation/validation, and permission dependencies
 for DFO, Police Tactical Commander, Range Guard, and GIS Analyst.
+
+Hardening notes (read this before deploying anywhere but localhost):
+  - The signing key comes from the JWT_SECRET_KEY env var. If it's not set,
+    we generate a random one at process startup and print a loud warning --
+    tokens simply stop validating on the next restart, but at least nothing
+    is hardcoded in source control anymore.
+  - Getting an elevated role (anything other than the default GUEST) now
+    requires a shared demo password (PUSHPA_DEMO_PASSWORD, default
+    "pushpa-demo" -- change it via env for anything beyond a local demo).
+    This is still not real per-officer login (no usernames, no per-person
+    audit trail) -- it's a minimum bar above "anyone can mint any badge
+    with zero friction". A production deployment should replace this with
+    real accounts.
+  - A request with no/invalid token no longer silently becomes a DFO
+    (top-clearance) user. It becomes a read-mostly GUEST instead.
 """
 from __future__ import annotations
 
-import base64
-import hashlib
-import hmac
-import json
+import os
+import secrets
 import time
+import warnings
 from typing import Any, Optional
 
-from fastapi import Depends, HTTPException, Header, status
+import jwt
+from fastapi import Depends, Header, HTTPException, status
 from pydantic import BaseModel
 
-SECRET_KEY = "pushpa_tactical_secret_key_change_in_production"
+_env_secret = os.environ.get("JWT_SECRET_KEY")
+if _env_secret:
+    SECRET_KEY = _env_secret
+else:
+    SECRET_KEY = secrets.token_urlsafe(48)
+    warnings.warn(
+        "JWT_SECRET_KEY is not set -- generated a random signing key for this "
+        "process only. All sessions will be invalidated on restart, and if you "
+        "ever run more than one backend instance they won't trust each other's "
+        "tokens. Set JWT_SECRET_KEY in your environment (see backend/.env.example) "
+        "before deploying anywhere beyond a single local demo.",
+        stacklevel=2,
+    )
+
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_SECONDS = 86400  # 24 hours
+DEMO_PASSWORD = os.environ.get("PUSHPA_DEMO_PASSWORD", "pushpa-demo")
 
 
 class Role:
+    GUEST = "GUEST"  # Unauthenticated / read-mostly default
     DFO = "DFO"  # Divisional Forest Officer
     POLICE_CMD = "POLICE_CMD"  # Police Tactical Interdiction Commander
     RANGE_GUARD = "RANGE_GUARD"  # Forest Range Guard / Checkpost Officer
@@ -29,6 +59,14 @@ class Role:
 
 
 ROLE_PROFILES: dict[str, dict[str, Any]] = {
+    Role.GUEST: {
+        "role_id": Role.GUEST,
+        "name": "Guest (Unauthenticated)",
+        "badge": "GUEST-00",
+        "jurisdiction": "None",
+        "clearance_level": "LEVEL-0 (READ-ONLY)",
+        "permissions": ["alerts_view"],
+    },
     Role.DFO: {
         "role_id": Role.DFO,
         "name": "Divisional Forest Officer (DFO)",
@@ -63,6 +101,9 @@ ROLE_PROFILES: dict[str, dict[str, Any]] = {
     },
 }
 
+# Roles a caller may request via /api/auth/switch-role, given the demo password.
+ELEVATABLE_ROLES = {Role.DFO, Role.POLICE_CMD, Role.RANGE_GUARD, Role.GIS_ANALYST}
+
 
 class TokenPayload(BaseModel):
     sub: str
@@ -72,20 +113,9 @@ class TokenPayload(BaseModel):
     exp: int
 
 
-def _b64encode(data: bytes) -> str:
-    return base64.urlsafe_b64encode(data).decode("utf-8").rstrip("=")
-
-
-def _b64decode(s: str) -> bytes:
-    padding = 4 - (len(s) % 4)
-    if padding < 4:
-        s += "=" * padding
-    return base64.urlsafe_b64decode(s.encode("utf-8"))
-
-
 def create_access_token(role_id: str, subject: str = "officer") -> str:
-    profile = ROLE_PROFILES.get(role_id, ROLE_PROFILES[Role.DFO])
-    header = {"alg": "HS256", "typ": "JWT"}
+    """Sign a standard JWT (via PyJWT) carrying the officer's role profile."""
+    profile = ROLE_PROFILES.get(role_id, ROLE_PROFILES[Role.GUEST])
     payload = {
         "sub": subject,
         "role": profile["role_id"],
@@ -93,51 +123,37 @@ def create_access_token(role_id: str, subject: str = "officer") -> str:
         "badge": profile["badge"],
         "exp": int(time.time()) + TOKEN_EXPIRE_SECONDS,
     }
-    header_b64 = _b64encode(json.dumps(header).encode("utf-8"))
-    payload_b64 = _b64encode(json.dumps(payload).encode("utf-8"))
-    signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
-    signature = hmac.new(SECRET_KEY.encode("utf-8"), signing_input, hashlib.sha256).digest()
-    sig_b64 = _b64encode(signature)
-    return f"{header_b64}.{payload_b64}.{sig_b64}"
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def verify_access_token(token: str) -> Optional[dict[str, Any]]:
     try:
-        parts = token.split(".")
-        if len(parts) != 3:
-            return None
-        header_b64, payload_b64, sig_b64 = parts
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
-        expected_sig = hmac.new(SECRET_KEY.encode("utf-8"), signing_input, hashlib.sha256).digest()
-        provided_sig = _b64decode(sig_b64)
-        if not hmac.compare_digest(expected_sig, provided_sig):
-            return None
-        payload_json = json.loads(_b64decode(payload_b64).decode("utf-8"))
-        if payload_json.get("exp", 0) < time.time():
-            return None
-        return payload_json
-    except Exception:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.PyJWTError:
         return None
 
 
 def get_current_user(authorization: Optional[str] = Header(None)) -> dict[str, Any]:
-    """Dependency that extracts user from Authorization header, defaulting to DFO if header absent for frictionless local dev."""
+    """Dependency that extracts the user from the Authorization header.
+
+    No token, or an invalid/expired one, resolves to GUEST (read-mostly)
+    rather than silently granting the top-clearance DFO profile.
+    """
     if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
+        token = authorization.split(" ", 1)[1]
         verified = verify_access_token(token)
         if verified:
-            role = verified.get("role", Role.DFO)
-            profile = ROLE_PROFILES.get(role, ROLE_PROFILES[Role.DFO])
+            role = verified.get("role", Role.GUEST)
+            profile = ROLE_PROFILES.get(role, ROLE_PROFILES[Role.GUEST])
             return {**profile, **verified}
 
-    # Default fallback profile for immediate local / hackathon use
-    return ROLE_PROFILES[Role.DFO]
+    return ROLE_PROFILES[Role.GUEST]
 
 
 def require_roles(*allowed_roles: str):
     def role_checker(user: dict[str, Any] = Depends(get_current_user)):
         user_role = user.get("role", user.get("role_id"))
-        if user_role == Role.DFO or "all" in user.get("permissions", []):
+        if "all" in user.get("permissions", []):
             return user
         if user_role not in allowed_roles:
             raise HTTPException(

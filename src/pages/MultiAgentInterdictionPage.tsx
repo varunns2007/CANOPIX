@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ShieldAlert,
@@ -25,7 +25,6 @@ import {
   Crosshair,
 } from "lucide-react";
 import { api } from "../api/client";
-import TacticalSatelliteMap from "../components/Map/TacticalSatelliteMap";
 
 
 interface RiskFactor {
@@ -85,6 +84,7 @@ export default function MultiAgentInterdictionPage() {
   const [copied, setCopied] = useState(false);
   const [dispatchLogs, setDispatchLogs] = useState<any[]>([]);
   const [activeStep, setActiveStep] = useState<number>(0);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Load initial dispatch logs
   const loadLogs = async () => {
@@ -97,6 +97,89 @@ export default function MultiAgentInterdictionPage() {
   useEffect(() => {
     loadLogs();
   }, []);
+
+  // Draw tactical interception route preview on Canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Background grid
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < canvas.width; x += 25) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += 25) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+    }
+
+    // Suspect coordinate (Start)
+    const sx = 60;
+    const sy = 130;
+
+    // Chokepoint bottleneck coordinate (Target)
+    const cx = 220;
+    const cy = 60;
+
+    // Police Station coordinate
+    const px = 270;
+    const py = 120;
+
+    // Road curve from Suspect to Chokepoint
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.bezierCurveTo(100, 160, 160, 90, cx, cy);
+    ctx.strokeStyle = result && result.risk_score >= 80 ? "rgba(244, 63, 94, 0.75)" : "rgba(16, 185, 129, 0.6)";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Police Response Vector
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(cx, cy);
+    ctx.strokeStyle = "rgba(14, 165, 233, 0.75)";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Draw Chokepoint Circle & Pulse
+    ctx.beginPath();
+    ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(244, 63, 94, 0.2)";
+    ctx.fill();
+    ctx.strokeStyle = "#f43f5e";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "10px JetBrains Mono, monospace";
+    ctx.fillText("CHOKEPOINT", cx - 30, cy - 20);
+
+    // Draw Suspect Vehicle marker
+    ctx.beginPath();
+    ctx.arc(sx, sy, 7, 0, Math.PI * 2);
+    ctx.fillStyle = "#fb7185";
+    ctx.fill();
+    ctx.fillText("TARGET (" + vehicleId + ")", sx - 35, sy + 20);
+
+    // Draw Police Station marker
+    ctx.beginPath();
+    ctx.arc(px, py, 7, 0, Math.PI * 2);
+    ctx.fillStyle = "#38bdf8";
+    ctx.fill();
+    ctx.fillText("POLICE UNIT", px - 25, py + 20);
+  }, [result, vehicleId]);
 
   const runPipeline = async (overrideParams?: any) => {
     setLoading(true);
@@ -515,25 +598,16 @@ export default function MultiAgentInterdictionPage() {
             </div>
           </div>
 
-          {/* TACTICAL ROUTE ROADBLOCK REAL SATELLITE MAP */}
+          {/* TACTICAL ROUTE ROADBLOCK MINI-MAP CANVAS */}
           <div className="rounded-2xl glass-panel p-5 border border-white/10 shadow-2xl">
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-2 flex items-center justify-between">
               <div className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
                 <Crosshair className="h-4 w-4 text-rose-400" />
-                Tactical Satellite Intercept & Roadblock HUD
+                Tactical Road Intercept Vector Simulation
               </div>
-              <span className="text-[10px] font-mono text-emerald-400 font-bold">Sentinel-2 10m L2A</span>
+              <span className="text-[10px] font-mono text-slate-400">Dijkstra Topological Graph</span>
             </div>
-            <TacticalSatelliteMap
-              vehicleId={vehicleId}
-              lat={parseFloat(lat) || 11.4085}
-              lng={parseFloat(lng) || 76.6965}
-              speed={parseFloat(speed) || 38}
-              heading={parseFloat(heading) || 212}
-              chokepoint={result?.target_chokepoint}
-              policeStation={result?.assigned_police_station}
-              riskScore={result?.risk_score ?? 85}
-            />
+            <canvas ref={canvasRef} width={340} height={180} className="w-full rounded-xl border border-white/10 bg-slate-950/90 shadow-inner" />
           </div>
         </div>
 

@@ -18,7 +18,25 @@ export default function TimberPermitsPage() {
 
   useEffect(() => {
     listPermits().then((res) => {
-      if (res.ok && res.data.permits?.length) setPermits(res.data.permits);
+      if (res.ok && res.data.permits?.length) {
+        // The live backend doesn't send the demo dataset's decorative
+        // `rto` (Regional Transport Office) label -- derive a readable
+        // fallback from what it does send instead of pretending the
+        // field exists.
+        const mapped: PermitRecord[] = res.data.permits.map((p) => ({
+          vehicle_id: p.vehicle_id,
+          permit_id: p.permit_id ?? null,
+          holder: p.holder ?? null,
+          authorized_species: p.authorized_species ?? null,
+          approved_route: p.approved_route ?? null,
+          expiry: p.expiry ?? null,
+          status: p.status,
+          valid: p.valid,
+          reason: p.reason,
+          rto: "Live telemetry (RTO not reported by backend)",
+        }));
+        setPermits(mapped);
+      }
     });
   }, []);
 

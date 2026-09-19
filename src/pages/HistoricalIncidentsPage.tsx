@@ -11,7 +11,22 @@ export default function HistoricalIncidentsPage() {
 
   useEffect(() => {
     listIncidents().then((res) => {
-      if (res.ok) setIncidents(res.data.incidents);
+      if (res.ok) {
+        // The live backend reports incidents without a pre-formatted
+        // human-readable location name and uses seizure_kg (snake_case);
+        // derive/rename rather than assuming the demo shape.
+        const mapped: HistoricalIncident[] = res.data.incidents.map((i) => ({
+          id: i.id,
+          zone_id: i.zone_id,
+          locationName: `${i.zone_id} incident site`,
+          lat: i.lat,
+          lng: i.lng,
+          date: i.date,
+          species: i.species,
+          seizureKg: i.seizure_kg,
+        }));
+        setIncidents(mapped);
+      }
     });
   }, []);
 

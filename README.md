@@ -20,135 +20,33 @@ demonstration with fully simulated demo data — no API keys required to run.
 
 ## Multi-Agent AI Interdiction Engine
 
-* **Real-Time Multi-Agent Interdiction Engine (LangGraph + Pydantic v2)**: Sub-second, event-driven multi-agent AI pipeline processing real-time vehicle GPS ticks, FASTag toll pings, and timber permit registries. Computes topological road interception bottlenecks ($T_{police} < T_{exit}$) and auto-dispatches tactical emergency dossiers to surrounding police stations.
-* **Copernicus Sentinel-2 Data Pipeline**: Searches and ingests Sentinel-2 Level-2A imagery, processes B04 (Red) & B08 (Near Infrared) bands, applies SCL cloud/shadow masking, and calculates NDVI rasters `(B08 - B04) / (B08 + B04)`.
-* **Forest Density Analyzer**: Classifies pixels into Non-vegetation, Sparse, Moderate, and Dense vegetation tiers with configurable thresholds.
-* **Before vs After NDVI Change Detection**: Computes vegetation decline deltas and extracts contiguous geographic polygons (`CHG_POLY_001`) with area (ha), centroids, and vegetation loss percentage.
-* **Vehicle Intelligence & Telemetry**: Monitors timber vehicle GPS coordinates, speed, heading, origin, destination, and evaluates route proximity to forest clearing polygons.
-* **Timber Permit Verification**: Checks legal transport authorization against the `timber_permits` registry.
-* **Explainable AI Risk Engine**: Generates an **Investigation Risk Score (0–100)** with transparent contributing factor breakdowns (e.g. `+27 Change severity`, `+20 Missing permit`, `+18 Density loss`, `+14 Route anomaly`, `+8 Historical hotspot`, `+4 Spatial proximity`).
-* **3D Forest Density & Terrain View**: Three.js 3D terrain elevation surface rendering vegetation density textures and highlighting forest clearing depression zones.
-* **GIS Command Dashboard**: Dark-mode interface with 12 toggleable map layers, live alert ticker, before/after comparison slider, and an Officer Investigation Panel.
-* **PUSHPA DEMO INCIDENT**: Preconfigured 10-step hackathon demonstration executing the entire intelligence story end-to-end.
+A LangGraph-based pipeline (Sentinel → Sleuth → Strategist → Dispatcher
+agents) turns a raw GPS/FASTag ping into a risk-scored, explainable
+interdiction dispatch in well under 50ms. It combines Sentinel-2 satellite
+change detection, timber permit verification, route/convoy analysis, and
+topological road routing to decide whether — and where — to intercept a
+vehicle.
+
+**Full architecture, agent roles, and pipeline diagram: [docs/AGENTS.md](./docs/AGENTS.md)**
 
 ---
 
-## 🤖 Real-Time Multi-Agent Interdiction Engine
+## Real-Time Telemetry Ingestion API
 
-```text
-[ Real-Time GPS / FASTag Ping ]
-              │
-              ▼
-   ┌──────────────────────┐
-   │    Sentinel Agent    │  --> Verify Timber Permit & Highway Corridor Conformance
-   └──────────┬───────────┘
-              │
-              ▼
-   ┌──────────────────────┐
-   │     Sleuth Agent     │  --> Night Curfew (22:00-05:00) & Convoy / Tandem Correlation
-   └──────────┬───────────┘
-              │
-       [ Risk Score >= 80 ? ]
-         ├── NO  ──> [ Routine Log / Skip Dispatch ]
-         └── YES ──>
-              │
-              ▼
-   ┌──────────────────────┐
-   │   Strategist Agent   │  --> Topological Road Dijkstra Routing (T_police < T_exit)
-   └──────────┬───────────┘
-              │
-              ▼
-   ┌──────────────────────┐
-   │   Dispatcher Agent   │  --> Jinja2 Tactical Police Dossier & Automated Alert Dispatch
-   └──────────────────────┘
-```
+**Full API reference with curl examples: [docs/API.md](./docs/API.md)**
 
-### 4 Specialized Agent Roles:
-1. **Sentinel Agent (Ingestion & Registry)**: Cross-checks vehicle registration against the state timber permit registry and evaluates spatial conformance against gazetted highway buffers (500m tolerance).
-2. **Sleuth Agent (Nocturnal & Convoy Engine)**: Checks timestamps against nocturnal curfew hours (22:00–05:00) and correlates nearby commercial vehicles to detect multi-vehicle timber cartels.
-3. **Strategist Agent (Topological Road Interceptor)**: Activated on `CRITICAL (>=80)` risk. Replaces straight-line approximations with topological Dijkstra road network traversal, computing Smuggler Exit Time ($T_{exit}$) vs Police Response Time ($T_{police}$) across candidate chokepoints with $\ge 3$ minute tactical safety headroom.
-4. **Dispatcher Agent (Emergency Tactical Disseminator)**: Generates high-priority police dossiers containing exact roadblock coordinates, suspect descriptions, and XAI factor attribution, logging dispatches and broadcasting to the live SSE stream.
-
----
-
-## 📡 Real-Time Telemetry Ingestion API & Curl Examples
-
-### 1. Ingest Clandestine Smuggling Vehicle Telemetry
+Quick example:
 ```bash
 curl -X POST "http://localhost:8000/api/telemetry/ingest" \
      -H "Content-Type: application/json" \
-     -d '{
-       "vehicle_id": "TN43E9912",
-       "timestamp": "2026-09-12T02:30:00Z",
-       "lat": 11.4085,
-       "lng": 76.6965,
-       "heading_deg": 212.0,
-       "speed_kmh": 38.0,
-       "cargo_weight_kg": 7500.0,
-       "declared_species": "Red Sanders",
-       "source": "FASTAG_TOLL_PING"
-     }'
+     -d '{"vehicle_id": "TN43E9912", "lat": 11.4085, "lng": 76.6965, "speed_kmh": 38.0, "cargo_weight_kg": 7500.0, "declared_species": "Red Sanders", "source": "FASTAG_TOLL_PING"}'
 ```
 
-**Response (Processed in < 50ms):**
-```json
-{
-  "status": "PROCESSED",
-  "vehicle_id": "TN43E9912",
-  "risk_score": 85,
-  "rating": "CRITICAL",
-  "permit_status": "UNPERMITTED",
-  "convoy_detected": false,
-  "risk_factors": [
-    {
-      "factor": "Unpermitted Vehicle",
-      "points": 25,
-      "explanation": "No valid digital transit permit on file in the state registry."
-    },
-    {
-      "factor": "Off-Route Dirt Track",
-      "points": 15,
-      "explanation": "Vehicle is 4.00km off gazetted highway transit corridors on an unmonitored interior track."
-    },
-    {
-      "factor": "Nocturnal Transit",
-      "points": 30,
-      "explanation": "Vehicle operating during restricted dead-of-night curfew hours (02:00 UTC)."
-    }
-  ],
-  "target_chokepoint": {
-    "name": "Naduvattam Toll-Barrier Bottleneck",
-    "road_name": "NH-67 Ooty-Gudalur Highway",
-    "lat": 11.4789,
-    "lng": 76.5478,
-    "smuggler_eta_mins": 31.6,
-    "police_eta_mins": 1.5,
-    "safety_margin_mins": 30.1,
-    "feasibility": "OPTIMAL_INTERCEPT"
-  },
-  "assigned_police_station": {
-    "station_name": "Naduvattam Police Outpost",
-    "phone": "+91-423-274100",
-    "jurisdiction_code": "TN-NIL-NDV-05",
-    "lat": 11.4789,
-    "lng": 76.5478,
-    "distance_to_chokepoint_km": 0.0
-  },
-  "dispatch_status": "SENT",
-  "execution_time_ms": 12.4
-}
-```
-
-### 2. Inspect Emergency Police Dispatches
-```bash
-curl -X GET "http://localhost:8000/api/police-stations/dispatch-log"
-```
-
-### 3. Run Automated Agent Verification Tests
-```powershell
-cd backend
-python -m pytest tests/test_interdiction_agents.py -v
-```
+Returns a risk score, rating, contributing factors, the optimal
+interception chokepoint, and the nearest police station — see
+[docs/API.md](./docs/API.md) for the full response shape and more
+endpoints. Once the backend is running, interactive docs are also live at
+`http://localhost:8000/docs`.
 
 ---
 
@@ -352,6 +250,26 @@ Interactive API docs: http://localhost:8000/docs once the backend is running.
 
 To point the frontend at a different backend URL, set `VITE_BACKEND_URL` in
 a `.env.local` file (see `.env.example`).
+
+### Security notes for the backend
+
+The backend ships in a demo-friendly configuration, but a couple of things
+are worth knowing before running it anywhere beyond your own machine:
+
+* **Copy `backend/.env.example` to `backend/.env`** and set `JWT_SECRET_KEY`
+  to a real random value (a command to generate one is in the file). Without
+  it, a random key is generated each process start — fine for a single demo
+  session, but every restart invalidates existing sessions.
+* Elevated roles (DFO, Police Commander, Range Guard, GIS Analyst) require
+  the shared `PUSHPA_DEMO_PASSWORD` (default `pushpa-demo`) via
+  `/api/auth/switch-role` — this is a minimum bar above no check at all, not
+  real per-officer login. If you change it on the backend, also set
+  `VITE_DEMO_PASSWORD` to match on the frontend (see `.env.example`).
+* `ALLOWED_ORIGINS` in `backend/.env` controls which frontend origins the
+  API accepts requests from (defaults to the local Vite dev server ports).
+
+See `backend/.env.example` for the full list of configurable env vars,
+including the satellite watch scheduler and police dispatch settings.
 
 ## Optional cinematic video intro
 
